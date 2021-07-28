@@ -23,7 +23,7 @@ struct
 	DWORD_PTR weapon_breath_x_axis;
 	DWORD_PTR weapon_breath_y_axis;
 	DWORD_PTR weapon_spread;
-	DWORD_PTR weapon_spread_crosshair_shake;
+	//DWORD_PTR weapon_spread_crosshair_shake;
 } offsets;
 
 struct 
@@ -147,7 +147,7 @@ DWORD_PTR pattern_scanner_ex(
 	DWORD_PTR start, DWORD_PTR end, 
 	const char* pattern, const char* mask, 
 	DWORD scan_speed,
-	DWORD page_prot, DWORD page_state = MEM_COMMIT, DWORD page_type = MEM_PRIVATE)
+	DWORD page_prot = PAGE_EXECUTE_READ, DWORD page_state = MEM_COMMIT, DWORD page_type = MEM_PRIVATE)
 {
 	auto pattern_length = strlen(mask);
 	MEMORY_BASIC_INFORMATION mbi{};
@@ -172,9 +172,7 @@ DWORD_PTR pattern_scanner_ex(
 
 			if (ReadProcessMemory(handle, (void*)start, seg_buffer, size_seg, NULL))
 			{
-				auto compare_result = compare_mem(pattern, mask, (DWORD_PTR)seg_buffer, size_seg, pattern_length, scan_speed);
-
-				if (compare_result != NULL)
+				if (auto compare_result = compare_mem(pattern, mask, (DWORD_PTR)seg_buffer, size_seg, pattern_length, scan_speed))
 				{
 					DWORD_PTR offset_from_start = compare_result - (DWORD_PTR)seg_buffer;
 					DWORD_PTR seg_buffer_to_internal_addres = start + offset_from_start;
@@ -223,8 +221,8 @@ void save_original_bytes()
 	ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_spread, saved_original_bytes.o_weapon_spread, 17, NULL) ?
 		printf("[+] Weapon spread instruction dumped\n") : printf("[+] Weapon spread instruction dump failed\n");
 
-	ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_spread_crosshair_shake, saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL) ?
-		printf("[+] Weapon spread crosshair shake instruction dumped\n") : printf("[+] Weapon spread crosshair shake instruction dump failed\n");
+	/*ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_spread_crosshair_shake, saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL) ?
+		printf("[+] Weapon spread crosshair shake instruction dumped\n") : printf("[+] Weapon spread crosshair shake instruction dump failed\n");*/
 }
 
 void make_patches()
@@ -372,25 +370,25 @@ void find_ofs_for_hack_features()
 			offsets.weapon_spread -= 0x9;
 	}
 
-	offsets.weapon_spread_crosshair_shake = pattern_scanner_ex(mw_process_info.handle,
+	/*offsets.weapon_spread_crosshair_shake = pattern_scanner_ex(mw_process_info.handle,
 		mw_process_info.base_address,
 		mw_process_info.base_end,
 		"\xF3\x0F\x00\x00\x00\x00\x00\x00\xE8\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\x00\x00\xF3\x0F\x00\x00\x0F\x28\x00\x00\x00\x00\x00\x00\xF3\x0F", "xx??????x????xx??????xx??xx??????xx",
 		0x1,
-		PAGE_EXECUTE_READWRITE);
+		PAGE_EXECUTE_READWRITE);*/
 
 	printf("[+] Recoil x axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
 		"[+] Recoil y axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
 		"[+] Breath x axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
 		"[+] Breath y axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
 		"[+] Spread writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
-		"[+] Spread crosshair instruction. Offset from base = 0x%I64X, address = 0x%p\n",
+		/*"[+] Spread crosshair instruction. Offset from base = 0x%I64X, address = 0x%p\n"*/,
 		offsets.weapon_recoil_x_axis - mw_process_info.base_address, offsets.weapon_recoil_x_axis,
 		offsets.weapon_recoil_y_axis - mw_process_info.base_address, offsets.weapon_recoil_y_axis,
 		offsets.weapon_breath_x_axis - mw_process_info.base_address, offsets.weapon_breath_x_axis,
 		offsets.weapon_breath_y_axis - mw_process_info.base_address, offsets.weapon_breath_y_axis,
-		offsets.weapon_spread - mw_process_info.base_address, offsets.weapon_spread,
-		offsets.weapon_spread_crosshair_shake - mw_process_info.base_address, offsets.weapon_spread_crosshair_shake
+		offsets.weapon_spread - mw_process_info.base_address, offsets.weapon_spread/*,
+		offsets.weapon_spread_crosshair_shake - mw_process_info.base_address, offsets.weapon_spread_crosshair_shake*/
 	);
 }
 
@@ -429,10 +427,10 @@ void enable_hacks()
 	else
 		printf("[+] No spread enabled\n");
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread_crosshair_shake), game_patch_patterns.m_weapon_spread_crosshair_shake, 8, NULL))
+	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread_crosshair_shake), game_patch_patterns.m_weapon_spread_crosshair_shake, 8, NULL))
 		printf("[-] Spread crosshair shake patch something wrong\n");
 	else
-		printf("[+] Spread crosshair shake patched enabled\n");
+		printf("[+] Spread crosshair shake patched enabled\n");*/
 }
 
 void restore_original_code()
@@ -456,10 +454,10 @@ void restore_original_code()
 	else
 		printf("[+] No spread restored\n");
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread_crosshair_shake), saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL))
+	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread_crosshair_shake), saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL))
 		printf("[-] Restore spread crosshair shake code something wrong\n");
 	else
-		printf("[+] Spread crosshair shake restored\n");
+		printf("[+] Spread crosshair shake restored\n");*/
 }
 
 BOOL WINAPI CtrlHandler(DWORD CtrlType)
@@ -548,15 +546,14 @@ int main()
 
 	DWORD sleep_timer = 0x0;
 
-	bool ingame_gui_active = false;
-
 	bool is_enabled = false;
 	bool is_key_pressed = false;
 
 	while (!on_exit_event)
 	{
 		bool in_game = false; 
-		if (ReadProcessMemory(mw_process_info.handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL) && in_game)
+		if (ReadProcessMemory(mw_process_info.handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL) 
+			&& in_game)
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
 			{
@@ -573,16 +570,7 @@ int main()
 					printf("[+] Some gamedata struct = 0x%p\n", unkn_structure);
 					while (!on_exit_event)
 					{
-						BYTE structure_status = 0x0;
-						if (!ReadProcessMemory(mw_process_info.handle, (void*)unkn_structure, &structure_status, sizeof(BYTE), NULL)
-							|| structure_status != 0xAB)
-						{
-							if (is_enabled)
-								restore_original_code();
-							printf("[!] Structure is no longer valid, research...\n");
-							break;
-						}
-
+						static bool maybe_integrity_check_active = false;
 						bool gui_active = false;
 						if (ReadProcessMemory(mw_process_info.handle, (void*)(unkn_structure + 0xC8), &gui_active, sizeof(bool), NULL)
 							&& gui_active)
@@ -592,7 +580,7 @@ int main()
 								if (!is_key_pressed)
 								{
 									is_enabled = !is_enabled;
-									ingame_gui_active = is_enabled;
+									maybe_integrity_check_active = is_enabled;
 									is_enabled ? enable_hacks() : restore_original_code();
 									is_key_pressed = true;
 								}
@@ -602,21 +590,34 @@ int main()
 								is_key_pressed = false;
 							}
 
-							if (!ingame_gui_active && is_enabled)
+							if (!maybe_integrity_check_active && is_enabled)
 							{
 								enable_hacks();
 								printf("[!] Reset hacks from cod integrity check (hacks enabled)\n");
-								ingame_gui_active = true;
+								maybe_integrity_check_active = true;
 							}
 						}
 						else
 						{
-							if (ingame_gui_active && is_enabled)
+							if (maybe_integrity_check_active && is_enabled)
 							{
 								restore_original_code();
 								printf("[!] Restore code from cod integrity check (hacks disabled)\n");
-								ingame_gui_active = false;
+								maybe_integrity_check_active = false;
 							}
+						}
+
+						BYTE structure_status = 0x0;
+						if (!ReadProcessMemory(mw_process_info.handle, (void*)unkn_structure, &structure_status, sizeof(BYTE), NULL)
+							|| structure_status != 0xAB)
+						{
+							if (maybe_integrity_check_active && is_enabled)
+							{
+								restore_original_code();
+								maybe_integrity_check_active = false;
+							}
+							printf("[!] Structure is no longer valid, research...\n");
+							break;
 						}
 
 						Sleep(50);
