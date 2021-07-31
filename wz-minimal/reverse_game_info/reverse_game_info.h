@@ -220,3 +220,56 @@ Address of signature = ModernWarfare.exe + 0x1D9836D1
 "\x8B\x00\x89\x45\x00\x48\x8D\x00\x00\x00\x48\x89\x00\x00\x8B\x4D\x00\xD3\x45\x00\x48\x8B\x00\x00\x48\x8D\x00\x00\x00\x83\x45\x78\x00\x8B\x45\x00\x03\x45\x00\x89\x45\x00\x8B\x45\x00\x33\x45\x00\x83\xE0\x00\x89\x45\x00\x48\x83\x45\x50\x00\x8B\x45\x00\x83\xF8\x00\x48\x89\x00\x00\x00\x48\x8D\x00\x00\x00\x48\xBD\x00\x00\x00\x00\x00\x00\x00\x00\x48\x87\x00\x00\x48\x89\x00\x00\x00\x48\x8D\x00\x00\x00\x48\x89\x00\x00\x00\x48\x8D\x00\x00\x00\x48\x8B\x00\x00\x00\x48\xB9", "xxxx?xx???xx??xx?xx?xx??xx???xxx?xx?xx?xx?xx?xx?xx?xx?xxxx?xx?xx?xx???xx???xx????????xx??xx???xx???xx???xx???xx???xx"
 "8B 00 89 45 ? 48 8D ? ? ? 48 89 ? ? 8B 4D ? D3 45 ? 48 8B ? ? 48 8D ? ? ? 83 45 78 ? 8B 45 ? 03 45 ? 89 45 ? 8B 45 ? 33 45 ? 83 E0 ? 89 45 ? 48 83 45 50 ? 8B 45 ? 83 F8 ? 48 89 ? ? ? 48 8D ? ? ? 48 BD ? ? ? ? ? ? ? ? 48 87 ? ? 48 89 ? ? ? 48 8D ? ? ? 48 89 ? ? ? 48 8D ? ? ? 48 8B ? ? ? 48 B9"
 */
+
+/*
+radar write all:
+Address of signature = ModernWarfare.exe + 0x05DB9570
+"\x0F\x29\x00\x00\x0F\x29\x00\x00\x0F\x10\x00\x00\x0F\x10\x00\x00\x00\x48\x81\xC1", "xx??xx??xx??xx???xxx"
+"0F 29 ? ? 0F 29 ? ? 0F 10 ? ? 0F 10 ? ? ? 48 81 C1"
+
+uav accsess:
+Address of signature = ModernWarfare.exe + 0x044847D0
+"80 BB ? ? ? ? 00 75 3A 8B 93 ? ? ? ? 85 D2"
+ModernWarfare.exe+44847D0 - 80 BB 58050000 00     - cmp byte ptr [rbx+00000558],00
+
+accsess draw angle:
+Address of signature = ModernWarfare.exe + 0x044A1EF1
+v1 "41 80 BE ? ? ? ? 00 74 31 45 84 ED"
+ModernWarfare.exe+44A1EF1 - 41 80 BE 5A050000 00  - cmp byte ptr [r14+0000055A],00
+
+upd:
+v1 "80 BE ? ? ? ? 00 74 31 45 84 ED"
+"\x80\xBE\x00\x00\x00\x00\x00\x74\x31\x45\x84\xED", "xx????xxxxxx"
+ModernWarfare.exe+47469D9 - 80 BE C6060100 00     - cmp byte ptr [rsi+000106C6],00
+or
+Address of signature = ModernWarfare.exe + 0x047469E0
+"\x74\x00\x45\x84\x00\x74\x00\x41\x0F\x00\x00\xEB\x00\x49\x8B", "x?xx?x?xx??x?xx"
+"74 ? 45 84 ? 74 ? 41 0F ? ? EB ? 49 8B"
+
+accsess radar draw enemy:
+Address of signature = ModernWarfare.exe + 0x04472F53
+my sig, bcz sig scanner popil govna: 
+v1 "80 BF ? ? ? ? 02 75 44 8B BF"
+"\x80\xBF\x00\x00\x00\x00\x02\x75\x44\x8B\xBF", "xx????xxxxx"
+v2 "80 BF ? ? ? ? 02 75 44 8B BF ? ? ? ? "
+ModernWarfare.exe+4472F53 - 80 BF 5B050000 02     - cmp byte ptr [rdi+0000055B],02
+or
+Address of signature = ModernWarfare.exe + 0x04718AB3
+"\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx"
+"75 ? 8B BF ? ? ? ? 8B 53"
+
+caller draw enemy
+Address of signature = ModernWarfare.exe + 0x04473172
+"\xE8\x00\x00\x00\x00\x48\x8B\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x88\x43", "x????xx?xx?x????xx"
+"E8 ? ? ? ? 48 8B ? 48 8B ? E8 ? ? ? ? 88 43"
+
+Address of signature = ModernWarfare.exe + 0x05DB95BC
+"\x0F\x10\x00\x00\x00\x75\x00\x0F\x29\x00\x00\x49\x83\xE0", "xx???x?xx??xxx"
+"0F 10 ? ? ? 75 ? 0F 29 ? ? 49 83 E0"
+ModernWarfare.exe+5DB95BC - 0F10 4C 11 F0         - movups xmm1,[rcx+rdx-10]
+
+//toka esli uav == 1
+Address of signature = ModernWarfare.exe + 0x04484D9F
+"\x0F\xB6\x00\x00\x00\x00\x00\x3C\x00\x75\x00\x8B\x8E", "xx?????x?x?xx"
+"0F B6 ? ? ? ? ? 3C ? 75 ? 8B 8E"
+*/
