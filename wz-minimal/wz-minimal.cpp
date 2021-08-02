@@ -12,7 +12,7 @@ struct
 	DWORD_PTR base_size;
 	DWORD_PTR base_end;
 	HANDLE handle;
-} mw_process_info;
+} mw_process;
 
 struct
 {
@@ -211,28 +211,28 @@ void save_original_bytes()
 	saved_original_bytes.o_radar_draw_enemy = new BYTE[2];
 	//saved_original_bytes.o_radar_draw_enemy_angles = new BYTE[2];
 
-	ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_recoil_x_axis, saved_original_bytes.o_weapon_recoil_x_axis, 7, NULL) ?
+	ReadProcessMemory(mw_process.handle, (void*)offsets.weapon_recoil_x_axis, saved_original_bytes.o_weapon_recoil_x_axis, 7, NULL) ?
 		printf("[+] Recoil x axis instruction dumped\n") : printf("[-] Recoil x axis instruction dump failed\n");
 		
-	ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_recoil_y_axis, saved_original_bytes.o_weapon_recoil_y_axis, 7, NULL) ?
+	ReadProcessMemory(mw_process.handle, (void*)offsets.weapon_recoil_y_axis, saved_original_bytes.o_weapon_recoil_y_axis, 7, NULL) ?
 		printf("[+] Recoil y axis instruction dumped\n") : printf("[-] Recoil y axis instruction dump failed\n");
 
-	ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_breath_x_axis, saved_original_bytes.o_weapon_breath_x_axis, 5, NULL) ?
+	ReadProcessMemory(mw_process.handle, (void*)offsets.weapon_breath_x_axis, saved_original_bytes.o_weapon_breath_x_axis, 5, NULL) ?
 		printf("[+] Breath x axis instruction dumped\n") : printf("[-] Breath x axis instruction dump failed\n");
 
-	ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_breath_y_axis, saved_original_bytes.o_weapon_breath_y_axis, 6, NULL) ?
+	ReadProcessMemory(mw_process.handle, (void*)offsets.weapon_breath_y_axis, saved_original_bytes.o_weapon_breath_y_axis, 6, NULL) ?
 		printf("[+] Breath y axis instruction dumped\n") : printf("[-] Breath y axis instruction dump failed\n");
 
-	/*ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_spread, saved_original_bytes.o_weapon_spread, 17, NULL) ?
+	/*ReadProcessMemory(mw_process.handle, (void*)offsets.weapon_spread, saved_original_bytes.o_weapon_spread, 17, NULL) ?
 		printf("[+] Weapon spread instruction dumped\n") : printf("[-] Weapon spread instruction dump failed\n");*/
 
-	/*ReadProcessMemory(mw_process_info.handle, (void*)offsets.weapon_spread_crosshair_shake, saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL) ?
+	/*ReadProcessMemory(mw_process.handle, (void*)offsets.weapon_spread_crosshair_shake, saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL) ?
 		printf("[+] Weapon spread crosshair shake instruction dumped\n") : printf("[+] Weapon spread crosshair shake instruction dump failed\n");*/
 
-	ReadProcessMemory(mw_process_info.handle, (void*)offsets.radar_draw_enemy, saved_original_bytes.o_radar_draw_enemy, 2, NULL) ?
+	ReadProcessMemory(mw_process.handle, (void*)offsets.radar_draw_enemy, saved_original_bytes.o_radar_draw_enemy, 2, NULL) ?
 		printf("[+] Radar enemy check instruction dumped\n") : printf("[-] Radar enemy check instruction dump failed\n");
 
-	/*ReadProcessMemory(mw_process_info.handle, (void*)offsets.radar_draw_enemy_angles, saved_original_bytes.o_radar_draw_enemy_angles, 2, NULL) ?
+	/*ReadProcessMemory(mw_process.handle, (void*)offsets.radar_draw_enemy_angles, saved_original_bytes.o_radar_draw_enemy_angles, 2, NULL) ?
 		printf("[+] Radar enemy angles check instruction dumped\n") : printf("[-] Radar enemy angles check instruction dump failed\n");*/
 }
 
@@ -262,7 +262,7 @@ void make_patches()
 
 void find_encrypted_function()
 {
-	auto e8xxxx_encrypted_func = pattern_scanner_ex(mw_process_info.handle, mw_process_info.base_address, mw_process_info.base_end,
+	auto e8xxxx_encrypted_func = pattern_scanner_ex(mw_process.handle, mw_process.base_address, mw_process.base_end,
 		"\xE8\x00\x00\x00\x00\x48\x8D\x00\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x44\x8B\x00\x00\x00\x00\x00\x48\x8D\x00\x00\x00\x00\x00\x4C\x8D", "x????xx?????x????xx?????xx?????xx",
 		0x1, PAGE_EXECUTE_READWRITE);
 
@@ -276,9 +276,9 @@ void find_encrypted_function()
 	printf("[+] Found encrypted function caller = 0x%p\n", e8xxxx_encrypted_func);
 
 	DWORD relative_address_encrypted_function = 0x0;
-	ReadProcessMemory(mw_process_info.handle, (void*)(e8xxxx_encrypted_func + 0x1), &relative_address_encrypted_function, sizeof(DWORD), NULL);
+	ReadProcessMemory(mw_process.handle, (void*)(e8xxxx_encrypted_func + 0x1), &relative_address_encrypted_function, sizeof(DWORD), NULL);
 
-	printf("[+] Relative offset to enctypted function from E8 XXXX = 0x%X\n", relative_address_encrypted_function);
+	printf("[+] Relative offset to encrypted function from E8 XXXX = 0x%X\n", relative_address_encrypted_function);
 
 	offsets.prologue_encrypted_function = asm64_solve_dest(e8xxxx_encrypted_func + 0x5, relative_address_encrypted_function);
 
@@ -287,7 +287,7 @@ void find_encrypted_function()
 
 void find_game_state_structure()
 {
-	auto func_7FF73E4C1A40 = pattern_scanner_ex(mw_process_info.handle, mw_process_info.base_address, mw_process_info.base_end,
+	auto func_7FF73E4C1A40 = pattern_scanner_ex(mw_process.handle, mw_process.base_address, mw_process.base_end,
 		"\x48\x89\x00\x00\x00\x57\x48\x83\xEC\x00\x48\x8B\x00\x4C\x8D\x00\x00\x00\x00\x00\x48\x8B\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x4C\x8D",
 		"xx???xxxx?xx?xx?????xx?x????xx?x????xx",
 		0x1, PAGE_EXECUTE_READWRITE);
@@ -295,7 +295,7 @@ void find_game_state_structure()
 	if (!func_7FF73E4C1A40)
 	{
 		//"48 8B ? ? ? ? ? BA ? ? ? ? 48 8B ? E8 ? ? ? ? 48 8B ? 48 85 ? 75 ? 33 DB EB ? 0F B7 ? B9 ? ? ? ? 66 3B ? 73"
-		func_7FF73E4C1A40 = pattern_scanner_ex(mw_process_info.handle, mw_process_info.base_address, mw_process_info.base_end,
+		func_7FF73E4C1A40 = pattern_scanner_ex(mw_process.handle, mw_process.base_address, mw_process.base_end,
 			"\x48\x8B\x00\x00\x00\x00\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x00\x48\x85\x00\x75\x00\x33\xDB\xEB\x00\x0F\xB7\x00\xB9\x00\x00\x00\x00\x66\x3B\x00\x73",
 			"xx?????x????xx?x????xx?xx?x?xxx?xx?x????xx?x",
 			0x1, PAGE_EXECUTE_READWRITE);
@@ -311,9 +311,9 @@ void find_game_state_structure()
 		func_7FF73E4C1A40 += 0x48;
 
 	DWORD relative_address = 0x0;
-	ReadProcessMemory(mw_process_info.handle, (void*)(func_7FF73E4C1A40 + 0x3), &relative_address, sizeof(DWORD), NULL);
+	ReadProcessMemory(mw_process.handle, (void*)(func_7FF73E4C1A40 + 0x3), &relative_address, sizeof(DWORD), NULL);
 
-	ReadProcessMemory(mw_process_info.handle, (void*)asm64_solve_dest(func_7FF73E4C1A40 + 0x7, relative_address), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
+	ReadProcessMemory(mw_process.handle, (void*)asm64_solve_dest(func_7FF73E4C1A40 + 0x7, relative_address), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
 
 	if (!offsets.game_state_struct)
 	{
@@ -329,16 +329,16 @@ void find_ofs_for_hack_features()
 {
 	if (offsets.prologue_encrypted_function)
 	{
-		if (offsets.weapon_recoil_x_axis = pattern_scanner_ex(mw_process_info.handle, 
+		if (offsets.weapon_recoil_x_axis = pattern_scanner_ex(mw_process.handle,
 			offsets.prologue_encrypted_function, 
-			mw_process_info.base_end,
+			mw_process.base_end,
 			"\x8B\x06\x41\x89\x80", "xxxxx",
 			0x1,
 			PAGE_EXECUTE_READWRITE))
 		{
 			offsets.weapon_recoil_x_axis += 0x2;
 
-			offsets.weapon_recoil_y_axis = pattern_scanner_ex(mw_process_info.handle,
+			offsets.weapon_recoil_y_axis = pattern_scanner_ex(mw_process.handle,
 				offsets.weapon_recoil_x_axis + 0x1,
 				offsets.weapon_recoil_x_axis + 0x50,
 				"\x41\x89\x80", "xxx",
@@ -347,23 +347,23 @@ void find_ofs_for_hack_features()
 		}
 	}
 
-	offsets.weapon_breath_x_axis = pattern_scanner_ex(mw_process_info.handle, 
-		mw_process_info.base_address, 
-		mw_process_info.base_end,
+	offsets.weapon_breath_x_axis = pattern_scanner_ex(mw_process.handle,
+		mw_process.base_address,
+		mw_process.base_end,
 		"\xF3\x44\x00\x00\x00\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx???xx????xx????xx?????xx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
 
-	offsets.weapon_breath_y_axis = pattern_scanner_ex(mw_process_info.handle, 
-		mw_process_info.base_address, 
-		mw_process_info.base_end,
+	offsets.weapon_breath_y_axis = pattern_scanner_ex(mw_process.handle,
+		mw_process.base_address,
+		mw_process.base_end,
 		"\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx????xx????xx?????xx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
 
-	//offsets.weapon_spread = pattern_scanner_ex(mw_process_info.handle, 
-	//	mw_process_info.base_address, 
-	//	mw_process_info.base_end,
+	//offsets.weapon_spread = pattern_scanner_ex(mw_process.handle, 
+	//	mw_process.base_address, 
+	//	mw_process.base_end,
 	//	"\x44\x0F\x00\x00\x00\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\x00\x00\x49\x8B", "xx???????xx??????xx",
 	//	0x1,
 	//	PAGE_EXECUTE_READWRITE);
@@ -373,9 +373,9 @@ void find_ofs_for_hack_features()
 	//{
 	//	printf("[-] First spread pattern is no longer valid, research for second pattern\n");
 
-	//	if (offsets.weapon_spread = pattern_scanner_ex(mw_process_info.handle,
-	//		mw_process_info.base_address,
-	//		mw_process_info.base_end,
+	//	if (offsets.weapon_spread = pattern_scanner_ex(mw_process.handle,
+	//		mw_process.base_address,
+	//		mw_process.base_end,
 	//		"\xF3\x0F\x00\x00\x00\x00\x00\x00\x49\x8B\x00\x00\x8B\xBB", "xx??????xx??xx",
 	//		0x1,
 	//		PAGE_EXECUTE_READWRITE))
@@ -384,16 +384,16 @@ void find_ofs_for_hack_features()
 	//	}
 	//}
 
-	/*offsets.weapon_spread_crosshair_shake = pattern_scanner_ex(mw_process_info.handle,
-		mw_process_info.base_address,
-		mw_process_info.base_end,
+	/*offsets.weapon_spread_crosshair_shake = pattern_scanner_ex(mw_process.handle,
+		mw_process.base_address,
+		mw_process.base_end,
 		"\xF3\x0F\x00\x00\x00\x00\x00\x00\xE8\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\x00\x00\xF3\x0F\x00\x00\x0F\x28\x00\x00\x00\x00\x00\x00\xF3\x0F", "xx??????x????xx??????xx??xx??????xx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);*/
 
-	offsets.radar_draw_enemy = pattern_scanner_ex(mw_process_info.handle,
-		mw_process_info.base_address,
-		mw_process_info.base_end,
+	offsets.radar_draw_enemy = pattern_scanner_ex(mw_process.handle,
+		mw_process.base_address,
+		mw_process.base_end,
 		"\x80\xBF\x00\x00\x00\x00\x02\x75\x44\x8B\xBF", "xx????xxxxx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
@@ -401,9 +401,9 @@ void find_ofs_for_hack_features()
 	if (!offsets.radar_draw_enemy)
 	{
 		printf("[-] First radar pattern is no longer valid, research for second pattern\n");
-		offsets.radar_draw_enemy = pattern_scanner_ex(mw_process_info.handle,
-			mw_process_info.base_address,
-			mw_process_info.base_end,
+		offsets.radar_draw_enemy = pattern_scanner_ex(mw_process.handle,
+			mw_process.base_address,
+			mw_process.base_end,
 			"\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx",
 			0x1,
 			PAGE_EXECUTE_READWRITE);
@@ -411,9 +411,9 @@ void find_ofs_for_hack_features()
 	else
 		offsets.radar_draw_enemy += 0x7;
 
-	/*offsets.radar_draw_enemy_angles = pattern_scanner_ex(mw_process_info.handle,
-		mw_process_info.base_address,
-		mw_process_info.base_end,
+	/*offsets.radar_draw_enemy_angles = pattern_scanner_ex(mw_process.handle,
+		mw_process.base_address,
+		mw_process.base_end,
 		"\x80\xBE\x00\x00\x00\x00\x00\x74\x31\x45\x84\xED", "xx????xxxxxx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
@@ -421,9 +421,9 @@ void find_ofs_for_hack_features()
 	if (!offsets.radar_draw_enemy_angles)
 	{
 		printf("[-] First draw angle radar pattern is no longer valid, research for second pattern\n");
-		offsets.radar_draw_enemy_angles = pattern_scanner_ex(mw_process_info.handle,
-			mw_process_info.base_address,
-			mw_process_info.base_end,
+		offsets.radar_draw_enemy_angles = pattern_scanner_ex(mw_process.handle,
+			mw_process.base_address,
+			mw_process.base_end,
 			"\x74\x00\x45\x84\x00\x74\x00\x41\x0F\x00\x00\xEB\x00\x49\x8B", "x?xx?x?xx??x?xx",
 			0x1,
 			PAGE_EXECUTE_READWRITE);
@@ -439,13 +439,13 @@ void find_ofs_for_hack_features()
 		/*"[+] Spread crosshair instruction. Offset from base = 0x%I64X, address = 0x%p\n"*/
 		"[+] Radar draw enemy instruction. Offset from base = 0x%I64X, address = 0x%p\n"
 		/*"[+] Radar draw enemy angle instruction. Offset from base = 0x%I64X, address = 0x%p\n"*/,
-		offsets.weapon_recoil_x_axis - mw_process_info.base_address, offsets.weapon_recoil_x_axis,
-		offsets.weapon_recoil_y_axis - mw_process_info.base_address, offsets.weapon_recoil_y_axis,
-		offsets.weapon_breath_x_axis - mw_process_info.base_address, offsets.weapon_breath_x_axis,
-		offsets.weapon_breath_y_axis - mw_process_info.base_address, offsets.weapon_breath_y_axis,
+		offsets.weapon_recoil_x_axis - mw_process.base_address, offsets.weapon_recoil_x_axis,
+		offsets.weapon_recoil_y_axis - mw_process.base_address, offsets.weapon_recoil_y_axis,
+		offsets.weapon_breath_x_axis - mw_process.base_address, offsets.weapon_breath_x_axis,
+		offsets.weapon_breath_y_axis - mw_process.base_address, offsets.weapon_breath_y_axis,
 		/*offsets.weapon_spread - mw_process_info.base_address, offsets.weapon_spread,*/
 		/*offsets.weapon_spread_crosshair_shake - mw_process_info.base_address, offsets.weapon_spread_crosshair_shake,*/
-		offsets.radar_draw_enemy - mw_process_info.base_address, offsets.radar_draw_enemy
+		offsets.radar_draw_enemy - mw_process.base_address, offsets.radar_draw_enemy
 		/*offsets.radar_draw_enemy_angles - mw_process_info.base_address, offsets.radar_draw_enemy_angles*/
 	);
 }
@@ -468,34 +468,34 @@ void enable_hacks()
 {
 	printf("\n[+] Enable hacks...\n");
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_recoil_x_axis), game_patch_patterns.m_weapon_recoil_x_axis, 7, NULL)
-		|| !WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_recoil_y_axis), game_patch_patterns.m_weapon_recoil_y_axis, 7, NULL))
+	if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_recoil_x_axis), game_patch_patterns.m_weapon_recoil_x_axis, 7, NULL)
+		|| !WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_recoil_y_axis), game_patch_patterns.m_weapon_recoil_y_axis, 7, NULL))
 		printf("[-] Recoil patch something wrong\n");
 	else
 		printf("[+] No recoil enabled\n");
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_breath_x_axis), game_patch_patterns.m_weapon_breath_x_axis, 5, NULL)
-		|| !WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_breath_y_axis), game_patch_patterns.m_weapon_breath_y_axis, 6, NULL))
+	if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_breath_x_axis), game_patch_patterns.m_weapon_breath_x_axis, 5, NULL)
+		|| !WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_breath_y_axis), game_patch_patterns.m_weapon_breath_y_axis, 6, NULL))
 		printf("[-] Breath patch something wrong\n");
 	else
 		printf("[+] No breath enabled\n");
 
-	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread), game_patch_patterns.m_weapon_spread, 17, NULL))
+	/*if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_spread), game_patch_patterns.m_weapon_spread, 17, NULL))
 		printf("[-] Spread patch something wrong\n");
 	else
 		printf("[+] No spread enabled\n");*/
 
-	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread_crosshair_shake), game_patch_patterns.m_weapon_spread_crosshair_shake, 8, NULL))
+	/*if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_spread_crosshair_shake), game_patch_patterns.m_weapon_spread_crosshair_shake, 8, NULL))
 		printf("[-] Spread crosshair shake patch something wrong\n");
 	else
 		printf("[+] Spread crosshair shake patched enabled\n");*/
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.radar_draw_enemy), game_patch_patterns.m_radar_draw_enemy, 2, NULL))
+	if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.radar_draw_enemy), game_patch_patterns.m_radar_draw_enemy, 2, NULL))
 		printf("[-] Radar draw enemy patch something wrong\n");
 	else
 		printf("[+] Radar draw enemy enabled\n");
 
-	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.radar_draw_enemy_angles), game_patch_patterns.m_radar_draw_enemy_angles, 2, NULL))
+	/*if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.radar_draw_enemy_angles), game_patch_patterns.m_radar_draw_enemy_angles, 2, NULL))
 		printf("[-] Radar draw enemy angles patch something wrong\n");
 	else
 		printf("[+] Radar draw enemy angles enabled\n");*/
@@ -505,34 +505,34 @@ void restore_original_code()
 {
 	printf("\n[+] Disable hacks...\n");
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_recoil_x_axis), saved_original_bytes.o_weapon_recoil_x_axis, 7, NULL)
-		|| !WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_recoil_y_axis), saved_original_bytes.o_weapon_recoil_y_axis, 7, NULL))
+	if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_recoil_x_axis), saved_original_bytes.o_weapon_recoil_x_axis, 7, NULL)
+		|| !WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_recoil_y_axis), saved_original_bytes.o_weapon_recoil_y_axis, 7, NULL))
 		printf("[-] Restore recoil code something wrong\n");
 	else
 		printf("[+] Recoil restored\n");
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_breath_x_axis), saved_original_bytes.o_weapon_breath_x_axis, 5, NULL)
-		|| !WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_breath_y_axis), saved_original_bytes.o_weapon_breath_y_axis, 6, NULL))
+	if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_breath_x_axis), saved_original_bytes.o_weapon_breath_x_axis, 5, NULL)
+		|| !WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_breath_y_axis), saved_original_bytes.o_weapon_breath_y_axis, 6, NULL))
 		printf("[-] Restore breath code something wrong\n");
 	else
 		printf("[+] No breath restored\n");
 
-	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread), saved_original_bytes.o_weapon_spread, 17, NULL))
+	/*if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_spread), saved_original_bytes.o_weapon_spread, 17, NULL))
 		printf("[-] Restore spread code something wrong\n");
 	else
 		printf("[+] No spread restored\n");*/
 
-	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.weapon_spread_crosshair_shake), saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL))
+	/*if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.weapon_spread_crosshair_shake), saved_original_bytes.o_weapon_spread_crosshair_shake, 8, NULL))
 		printf("[-] Restore spread crosshair shake code something wrong\n");
 	else
 		printf("[+] Spread crosshair shake restored\n");*/
 
-	if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.radar_draw_enemy), saved_original_bytes.o_radar_draw_enemy, 2, NULL))
+	if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.radar_draw_enemy), saved_original_bytes.o_radar_draw_enemy, 2, NULL))
 		printf("[-] Radar restore code something wrong\n");
 	else
 		printf("[+] Radar code restored\n");
 
-	/*if (!WriteProcessMemory(mw_process_info.handle, (void*)(offsets.radar_draw_enemy_angles), saved_original_bytes.o_radar_draw_enemy_angles, 2, NULL))
+	/*if (!WriteProcessMemory(mw_process.handle, (void*)(offsets.radar_draw_enemy_angles), saved_original_bytes.o_radar_draw_enemy_angles, 2, NULL))
 		printf("[-] Radar enemy angles restore code something wrong\n");
 	else
 		printf("[+] Radar enemy angles code restored\n");*/
@@ -564,14 +564,12 @@ void title_thread()
 	}
 }
 
-int main()
+auto main() -> int
 {
-	SetConsoleTitle("Microsoft Word");
+	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)title_thread, NULL, NULL, NULL);
 
 	if (!SetConsoleCtrlHandler(CtrlHandler, TRUE))
-		return 0;
-
-	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)title_thread, NULL, NULL, NULL);
+		exit(1);
 
 	auto process_name = "ModernWarfare.exe";
 
@@ -584,9 +582,9 @@ int main()
 		exit(1);
 	}
 
-	mw_process_info.pid = process->th32ProcessID;
+	mw_process.pid = process->th32ProcessID;
 
-	auto base = find_module(mw_process_info.pid, process_name);
+	auto base = find_module(mw_process.pid, process_name);
 
 	if (!base)
 	{
@@ -595,19 +593,19 @@ int main()
 		exit(1);
 	}
 
-	mw_process_info.base_address = (DWORD_PTR)base->modBaseAddr;
-	mw_process_info.base_size = (DWORD_PTR)base->modBaseSize;
-	mw_process_info.base_end = mw_process_info.base_address + mw_process_info.base_size;
+	mw_process.base_address = (DWORD_PTR)base->modBaseAddr;
+	mw_process.base_size = (DWORD_PTR)base->modBaseSize;
+	mw_process.base_end = mw_process.base_address + mw_process.base_size;
 
 	printf("[+] Found MW19 process. pid = %d, base = 0x%p, base size = %I64X, base end = 0x%p\n", 
-		mw_process_info.pid, 
-		mw_process_info.base_address, 
-		mw_process_info.base_size, 
-		mw_process_info.base_end);
+		mw_process.pid, 
+		mw_process.base_address, 
+		mw_process.base_size, 
+		mw_process.base_end);
 
-	mw_process_info.handle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mw_process_info.pid);
+	mw_process.handle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION, FALSE, mw_process.pid);
 
-	if (!mw_process_info.handle)
+	if (!mw_process.handle)
 	{
 		printf("[-] Failed open process\n");
 		system("pause");
@@ -630,27 +628,25 @@ int main()
 	while (!on_exit_event)
 	{
 		bool in_game = false; 
-		if (ReadProcessMemory(mw_process_info.handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL) 
+		if (ReadProcessMemory(mw_process.handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
 			&& in_game)
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
 			{
-				auto unkn_structure = pattern_scanner_ex(mw_process_info.handle, start, end,
+				if (auto unkn_structure = pattern_scanner_ex(mw_process.handle, start, end,
 					"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
 					"\x3F\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x00\x00\x00\x00"
 					"\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F\x00\x00\x80\x3F",
 					"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
 					0x1,
-					PAGE_READWRITE);
-
-				if (unkn_structure != NULL)
+					PAGE_READWRITE))
 				{
 					printf("[+] Some gamedata struct = 0x%p\n", unkn_structure);
 					while (!on_exit_event)
 					{
 						static bool maybe_integrity_check_active = false;
 						bool gui_active = false;
-						if (ReadProcessMemory(mw_process_info.handle, (void*)(unkn_structure + 0xC8), &gui_active, sizeof(bool), NULL)
+						if (ReadProcessMemory(mw_process.handle, (void*)(unkn_structure + 0xC8), &gui_active, sizeof(bool), NULL)
 							&& gui_active)
 						{
 							if (GetAsyncKeyState(VK_XBUTTON2))
@@ -686,7 +682,7 @@ int main()
 						}
 
 						BYTE structure_status = 0x0;
-						if (!ReadProcessMemory(mw_process_info.handle, (void*)unkn_structure, &structure_status, sizeof(BYTE), NULL)
+						if (!ReadProcessMemory(mw_process.handle, (void*)unkn_structure, &structure_status, sizeof(BYTE), NULL)
 							|| structure_status != 0xAB)
 						{
 							if (maybe_integrity_check_active && is_enabled)
@@ -717,7 +713,7 @@ int main()
 		restore_original_code();
 	}
 
-	CloseHandle(mw_process_info.handle);
+	CloseHandle(mw_process.handle);
 
 	printf("[+] Exit...\n");
 
