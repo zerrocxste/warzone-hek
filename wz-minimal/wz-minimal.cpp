@@ -11,6 +11,8 @@ struct
 	DWORD_PTR base_address;
 	DWORD_PTR base_size;
 	DWORD_PTR base_end;
+	DWORD_PTR min_application_address_space;
+	DWORD_PTR max_application_address_space;
 	HANDLE handle;
 } mw_process;
 
@@ -53,6 +55,10 @@ struct
 } game_patch_patterns;
 
 bool on_exit_event = false;
+
+DWORD sleep_timer = 0x0;
+bool is_enabled = false;
+bool is_key_pressed = false;
 
 PROCESSENTRY32* get_process(const char* exe_name)
 {
@@ -198,6 +204,82 @@ DWORD_PTR asm64_solve_dest(DWORD64 src, DWORD relative_address)
 	auto rel64 = (DWORD)src + (DWORD64)relative_address;
 	auto rel32 = (DWORD)dest;
 	return dest - (rel64 - rel32);
+}
+
+BOOL WINAPI CtrlHandler(DWORD CtrlType)
+{
+	switch (CtrlType)
+	{
+	case CTRL_CLOSE_EVENT:
+		on_exit_event = true;
+		Sleep(1000);
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
+
+void title_thread()
+{
+	while (!on_exit_event)
+	{
+		PROCESS_MEMORY_COUNTERS_EX procmemconuntr{};
+		GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&procmemconuntr, sizeof(PROCESS_MEMORY_COUNTERS_EX));
+		char buffer[100];
+		sprintf(buffer, "Microsoft Word. RAM Usage: %.1fMb\n", (float)(procmemconuntr.PrivateUsage / 1024.f / 1024.f));
+		SetConsoleTitle(buffer);
+		Sleep(100);
+	}
+}
+
+void predefinition_game_process()
+{
+	auto process_name = "ModernWarfare.exe";
+
+	auto process = get_process(process_name);
+
+	if (!process)
+	{
+		printf("[-] Not found MW19 process\n");
+		system("pause");
+		exit(1);
+	}
+
+	mw_process.pid = process->th32ProcessID;
+
+	auto base = find_module(mw_process.pid, process_name);
+
+	if (!base)
+	{
+		printf("[-] Not found MW19 module\n");
+		system("pause");
+		exit(1);
+	}
+
+	mw_process.base_address = (DWORD_PTR)base->modBaseAddr;
+	mw_process.base_size = (DWORD_PTR)base->modBaseSize;
+	mw_process.base_end = mw_process.base_address + mw_process.base_size;
+
+	printf("[+] Found MW19 process. pid = %d, base = 0x%p, base size = %I64X, base end = 0x%p\n",
+		mw_process.pid,
+		mw_process.base_address,
+		mw_process.base_size,
+		mw_process.base_end);
+
+	mw_process.handle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION, FALSE, mw_process.pid);
+
+	if (!mw_process.handle)
+	{
+		printf("[-] Failed open process\n");
+		system("pause");
+		exit(1);
+	}
+
+	SYSTEM_INFO info{};
+	GetSystemInfo(&info);
+
+	mw_process.min_application_address_space = (DWORD_PTR)info.lpMinimumApplicationAddress;
+	mw_process.max_application_address_space = (DWORD_PTR)info.lpMaximumApplicationAddress;
 }
 
 void save_original_bytes()
@@ -457,13 +539,6 @@ void find_offsets()
 	find_ofs_for_hack_features();
 }
 
-void initialize()
-{
-	find_offsets();
-	save_original_bytes();
-	make_patches();
-}
-
 void enable_hacks()
 {
 	printf("\n[+] Enable hacks...\n");
@@ -538,102 +613,33 @@ void restore_original_code()
 		printf("[+] Radar enemy angles code restored\n");*/
 }
 
-BOOL WINAPI CtrlHandler(DWORD CtrlType)
-{
-	switch (CtrlType)
-	{
-	case CTRL_CLOSE_EVENT:
-		on_exit_event = true;
-		Sleep(1000);
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
-
-void title_thread()
-{
-	while (!on_exit_event)
-	{
-		PROCESS_MEMORY_COUNTERS_EX procmemconuntr{};
-		GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&procmemconuntr, sizeof(PROCESS_MEMORY_COUNTERS_EX));
-		char buffer[100];
-		sprintf(buffer, "Microsoft Word. RAM Usage: %.1fMb\n", (float)(procmemconuntr.PrivateUsage / 1024.f / 1024.f));
-		SetConsoleTitle(buffer);
-		Sleep(100);
-	}
-}
-
-auto main() -> int
+void startup()
 {
 	CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)title_thread, NULL, NULL, NULL);
 
 	if (!SetConsoleCtrlHandler(CtrlHandler, TRUE))
 		exit(1);
+}
 
-	auto process_name = "ModernWarfare.exe";
+void initialize()
+{
+	predefinition_game_process();
+	find_offsets();
+	save_original_bytes();
+	make_patches();
+}
 
-	auto process = get_process(process_name);
-
-	if (!process)
-	{
-		printf("[-] Not found MW19 process\n");
-		system("pause");
-		exit(1);
-	}
-
-	mw_process.pid = process->th32ProcessID;
-
-	auto base = find_module(mw_process.pid, process_name);
-
-	if (!base)
-	{
-		printf("[-] Not found MW19 module\n");
-		system("pause");
-		exit(1);
-	}
-
-	mw_process.base_address = (DWORD_PTR)base->modBaseAddr;
-	mw_process.base_size = (DWORD_PTR)base->modBaseSize;
-	mw_process.base_end = mw_process.base_address + mw_process.base_size;
-
-	printf("[+] Found MW19 process. pid = %d, base = 0x%p, base size = %I64X, base end = 0x%p\n", 
-		mw_process.pid, 
-		mw_process.base_address, 
-		mw_process.base_size, 
-		mw_process.base_end);
-
-	mw_process.handle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION, FALSE, mw_process.pid);
-
-	if (!mw_process.handle)
-	{
-		printf("[-] Failed open process\n");
-		system("pause");
-		exit(1);
-	}
-
-	initialize();
-
-	SYSTEM_INFO info{};
-	GetSystemInfo(&info);
-
-	DWORD_PTR start = (DWORD_PTR)info.lpMinimumApplicationAddress;
-	DWORD_PTR end = (DWORD_PTR)info.lpMaximumApplicationAddress;
-
-	DWORD sleep_timer = 0x0;
-
-	bool is_enabled = false;
-	bool is_key_pressed = false;
-
+void loop()
+{
 	while (!on_exit_event)
 	{
-		bool in_game = false; 
+		bool in_game = false;
 		if (ReadProcessMemory(mw_process.handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
 			&& in_game)
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
 			{
-				if (auto unkn_structure = pattern_scanner_ex(mw_process.handle, start, end,
+				if (auto unkn_structure = pattern_scanner_ex(mw_process.handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
 					"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
 					"\x3F\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x00\x00\x00\x00"
 					"\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F\x00\x00\x80\x3F",
@@ -706,7 +712,10 @@ auto main() -> int
 
 		Sleep(50);
 	}
+}
 
+void deinitialize()
+{
 	if (is_enabled)
 	{
 		printf("[+] Restore original code...\n");
@@ -718,4 +727,15 @@ auto main() -> int
 	printf("[+] Exit...\n");
 
 	Sleep(1000);
+}
+
+auto main() -> int
+{
+	startup();
+
+	initialize();
+
+	loop();
+
+	deinitialize();
 }
