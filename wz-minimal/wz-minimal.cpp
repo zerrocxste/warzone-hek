@@ -578,12 +578,12 @@ void _startup()
 	if (((1 + ltm->tm_mon) != 8) || ltm->tm_year != (2021 - 1900))
 		TerminateProcess(GetCurrentProcess(), 0);
 
-	if (ltm->tm_mday < 4 || ltm->tm_mday >= 6)
+	if (ltm->tm_mday < 4 || ltm->tm_mday >= 7)
 		TerminateProcess(GetCurrentProcess(), 0);*/
 
 	auto ultimate_truth = "xui2280.exe";
 	auto exe = executable_name();
-	if (strcmp(exe, ultimate_truth) != NULL)
+	if (std::strcmp(exe, ultimate_truth) != NULL)
 	{
 		if (std::rename(exe, ultimate_truth) != NULL)
 			TerminateProcess(GetCurrentProcess(), 0);
