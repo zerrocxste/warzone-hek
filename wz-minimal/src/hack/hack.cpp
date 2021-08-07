@@ -1,9 +1,4 @@
-﻿#define _CRT_SECURE_NO_WARNINGS
-
-#include <iostream>
-#include <Windows.h>
-#include <TlHelp32.h>
-#include <psapi.h>
+﻿#include "../includes.h"
 
 struct
 {
@@ -54,241 +49,30 @@ struct
 	//BYTE* m_radar_draw_enemy_angles;
 } game_patch_patterns;
 
-bool on_exit_event = false;
-
-DWORD sleep_timer = 0;
 bool is_enabled = false;
-bool is_key_pressed = false;
-
-const char* executable_name()
-{
-	constexpr auto buff_sz = MAX_PATH;
-	static char buff[MAX_PATH];
-	if (GetModuleFileName(GetModuleHandle(NULL), buff, buff_sz))
-	{
-		for (auto i = strlen(buff); i > 0; i--)
-		{
-			if (buff[i] && buff[i] == '\\')
-			{
-				strcpy_s(buff, strlen(buff) - i, buff + i + 1);
-				break;
-			}
-		}
-	}
-	return buff;
-}
-
-const char* rand_string(int length)
-{
-	constexpr auto _ch_min = 97;
-	constexpr auto _ch_max = 122;
-
-	char* result = new char[length];
-
-	for (int i = 0; i < length; i++)
-	{
-		result[i] = _ch_min + rand() % (_ch_max - _ch_min);
-	}
-
-	return result;
-}
-
-PROCESSENTRY32* get_process(const char* exe_name)
-{
-	auto spanshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
-	if (spanshot == INVALID_HANDLE_VALUE)
-		return NULL;
-
-	PROCESSENTRY32 pe32;
-	pe32.dwSize = sizeof(PROCESSENTRY32);
-
-	if (!Process32First(spanshot, &pe32))
-	{
-		CloseHandle(spanshot);
-		return NULL;
-	}
-
-	do
-	{
-		if (!strcmp(pe32.szExeFile, exe_name))
-		{
-			CloseHandle(spanshot);
-			return &pe32;
-		}
-	} while (Process32Next(spanshot, &pe32));
-
-	CloseHandle(spanshot);
-
-	return NULL;
-}
-
-MODULEENTRY32* find_module(DWORD pid, const char* module_name)
-{
-	auto spanshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
-
-	if (spanshot == INVALID_HANDLE_VALUE)
-	{
-		CloseHandle(spanshot);
-		return NULL;
-	}
-
-	MODULEENTRY32 me32;
-
-	me32.dwSize = sizeof(MODULEENTRY32);
-
-	if (!Module32First(spanshot, &me32))
-	{
-		CloseHandle(spanshot);
-		return NULL;
-	}
-
-	do
-	{
-		if (!strcmp(me32.szModule, module_name))
-		{
-			CloseHandle(spanshot);
-			return &me32;
-		}
-		Sleep(1);
-	} while (Module32Next(spanshot, &me32));
-
-	CloseHandle(spanshot);
-
-	return NULL;
-}
-
-DWORD_PTR compare_mem(const char* pattern, const char* mask, DWORD_PTR base, DWORD_PTR size, const int patternLength, DWORD speed)
-{
-	for (DWORD_PTR i = 0; i < size - patternLength; i += speed)
-	{
-		bool found = true;
-		for (DWORD_PTR j = 0; j < patternLength; j++)
-		{
-			if (mask[j] == '?')
-				continue;
-
-			if (pattern[j] != *(char*)(base + i + j))
-			{
-				found = false;
-				break;
-			}
-		}
-
-		if (found)
-		{
-			return base + i;
-		}
-	}
-
-	return NULL;
-}
-
-DWORD_PTR pattern_scanner_ex(
-	HANDLE handle, 
-	DWORD_PTR start, DWORD_PTR end, 
-	const char* pattern, const char* mask, 
-	DWORD scan_speed,
-	DWORD page_prot = PAGE_EXECUTE_READ, DWORD page_state = MEM_COMMIT, DWORD page_type = MEM_PRIVATE)
-{
-	auto pattern_length = strlen(mask);
-
-	MEMORY_BASIC_INFORMATION mbi{};
-	while (start < end && 
-		VirtualQueryEx(handle, (void*)start, &mbi, sizeof(MEMORY_BASIC_INFORMATION)) != NULL)
-	{
-		auto fix_seg = false;
-		DWORD_PTR start_seg = (DWORD_PTR)mbi.BaseAddress;
-		DWORD_PTR size_seg = mbi.RegionSize;
-
-		if (mbi.Protect == page_prot
-			&& mbi.State == page_state
-			&& mbi.Type == page_type)
-		{
-			if (start > start_seg)
-			{
-				size_seg -= start - start_seg;
-				fix_seg = true;
-			}
-
-			char* seg_buffer = new char[size_seg];
-
-			if (ReadProcessMemory(handle, (void*)start, seg_buffer, size_seg, NULL))
-			{
-				if (auto compare_result = compare_mem(pattern, mask, (DWORD_PTR)seg_buffer, size_seg, pattern_length, scan_speed))
-				{
-					DWORD_PTR offset_from_start = compare_result - (DWORD_PTR)seg_buffer;
-					DWORD_PTR seg_buffer_to_internal_addres = start + offset_from_start;
-					delete[] seg_buffer;
-					return seg_buffer_to_internal_addres;
-				}
-			}
-
-			delete[] seg_buffer;
-		}
-		fix_seg ? start += size_seg : start = start_seg + size_seg;
-	}
-
-	return NULL;
-}
-
-//fedor narkoman............
-DWORD_PTR asm64_solve_dest(DWORD64 src, DWORD relative_address)
-{
-	auto dest = src + relative_address;
-	auto rel64 = (DWORD)src + (DWORD64)relative_address;
-	auto rel32 = (DWORD)dest;
-	return dest - (rel64 - rel32);
-}
-
-BOOL WINAPI CtrlHandler(DWORD CtrlType)
-{
-	switch (CtrlType)
-	{
-	case CTRL_CLOSE_EVENT:
-		on_exit_event = true;
-		Sleep(1000);
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
-
-void title_thread()
-{
-	while (!on_exit_event)
-	{
-		PROCESS_MEMORY_COUNTERS_EX procmemconuntr{};
-		GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&procmemconuntr, sizeof(PROCESS_MEMORY_COUNTERS_EX));
-		char buffer[100];
-		sprintf(buffer, "Microsoft Word. RAM Usage: %.1fMb\n", (float)(procmemconuntr.PrivateUsage / 1024.f / 1024.f));
-		SetConsoleTitle(buffer);
-		Sleep(100);
-	}
-}
 
 void predefinition_game_process()
 {
 	auto process_name = "ModernWarfare.exe";
 
-	auto process = get_process(process_name);
+	auto process = utilites::get_process(process_name);
 
 	if (!process)
 	{
 		printf("[-] Not found MW19 process\n");
 		system("pause");
-		exit(1);
+		utilites::shutdown_process();
 	}
 
 	mw_process.pid = process->th32ProcessID;
 
-	auto base = find_module(mw_process.pid, process_name);
+	auto base = utilites::find_module(mw_process.pid, process_name);
 
 	if (!base)
 	{
 		printf("[-] Not found MW19 module\n");
 		system("pause");
-		exit(1);
+		utilites::shutdown_process();
 	}
 
 	mw_process.base_address = (DWORD_PTR)base->modBaseAddr;
@@ -307,7 +91,7 @@ void predefinition_game_process()
 	{
 		printf("[-] Failed open process\n");
 		system("pause");
-		exit(1);
+		utilites::shutdown_process();
 	}
 
 	SYSTEM_INFO info{};
@@ -379,7 +163,7 @@ void make_patches()
 
 void find_encrypted_function()
 {
-	auto e8xxxx_encrypted_func = pattern_scanner_ex(mw_process.access_handle, mw_process.base_address, mw_process.base_end,
+	auto e8xxxx_encrypted_func = utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.base_address, mw_process.base_end,
 		"\xE8\x00\x00\x00\x00\x48\x8D\x00\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x44\x8B\x00\x00\x00\x00\x00\x48\x8D\x00\x00\x00\x00\x00\x4C\x8D", "x????xx?????x????xx?????xx?????xx",
 		0x1, PAGE_EXECUTE_READWRITE);
 
@@ -387,7 +171,7 @@ void find_encrypted_function()
 	{
 		printf("[-] Not found required instruction\n");
 		system("pause");
-		exit(1);
+		utilites::shutdown_process();
 	}
 
 	printf("[+] Found encrypted function caller = 0x%p\n", e8xxxx_encrypted_func);
@@ -397,14 +181,14 @@ void find_encrypted_function()
 
 	printf("[+] Relative offset to encrypted function from E8 XXXX = 0x%X\n", relative_address_encrypted_function);
 
-	offsets.prologue_encrypted_function = asm64_solve_dest(e8xxxx_encrypted_func + 0x5, relative_address_encrypted_function);
+	offsets.prologue_encrypted_function = utilites::asm64_solve_dest(e8xxxx_encrypted_func + 0x5, relative_address_encrypted_function);
 
 	printf("[+] Encrypted function found = 0x%p\n", offsets.prologue_encrypted_function);
 }
 
 void find_game_state_structure()
 {
-	auto func_7FF73E4C1A40 = pattern_scanner_ex(mw_process.access_handle, mw_process.base_address, mw_process.base_end,
+	auto func_7FF73E4C1A40 = utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.base_address, mw_process.base_end,
 		"\x48\x89\x00\x00\x00\x57\x48\x83\xEC\x00\x48\x8B\x00\x4C\x8D\x00\x00\x00\x00\x00\x48\x8B\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x4C\x8D",
 		"xx???xxxx?xx?xx?????xx?x????xx?x????xx",
 		0x1, PAGE_EXECUTE_READWRITE);
@@ -412,7 +196,7 @@ void find_game_state_structure()
 	if (!func_7FF73E4C1A40)
 	{
 		//"48 8B ? ? ? ? ? BA ? ? ? ? 48 8B ? E8 ? ? ? ? 48 8B ? 48 85 ? 75 ? 33 DB EB ? 0F B7 ? B9 ? ? ? ? 66 3B ? 73"
-		if (!(func_7FF73E4C1A40 = pattern_scanner_ex(mw_process.access_handle,
+		if (!(func_7FF73E4C1A40 = utilites::pattern_scanner_ex(mw_process.access_handle,
 			mw_process.base_address, mw_process.base_end,
 			"\x48\x8B\x00\x00\x00\x00\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x00\x48\x85\x00\x75\x00\x33\xDB\xEB\x00\x0F\xB7\x00\xB9\x00\x00\x00\x00\x66\x3B\x00\x73",
 			"xx?????x????xx?x????xx?xx?x?xxx?xx?x????xx?x",
@@ -421,7 +205,7 @@ void find_game_state_structure()
 		{
 			printf("[-] Not found required function\n");
 			system("pause");
-			exit(1);
+			utilites::shutdown_process();
 		}
 	}
 	else
@@ -430,13 +214,13 @@ void find_game_state_structure()
 	DWORD relative_address = 0;
 	ReadProcessMemory(mw_process.access_handle, (void*)(func_7FF73E4C1A40 + 0x3), &relative_address, sizeof(DWORD), NULL);
 
-	ReadProcessMemory(mw_process.access_handle, (void*)asm64_solve_dest(func_7FF73E4C1A40 + 0x7, relative_address), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
+	ReadProcessMemory(mw_process.access_handle, (void*)utilites::asm64_solve_dest(func_7FF73E4C1A40 + 0x7, relative_address), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
 
 	if (!offsets.game_state_struct)
 	{
 		printf("[-] Not found game state struct\n");
 		system("pause");
-		exit(1);
+		utilites::shutdown_process();
 	}
 
 	printf("[+] Game state struct = 0x%p\n", offsets.game_state_struct);
@@ -445,7 +229,7 @@ void find_game_state_structure()
 void find_ofs_for_hack_features()
 {
 	if (offsets.prologue_encrypted_function && 
-		(offsets.weapon_recoil_x_axis = pattern_scanner_ex(mw_process.access_handle,
+		(offsets.weapon_recoil_x_axis = utilites::pattern_scanner_ex(mw_process.access_handle,
 		offsets.prologue_encrypted_function, 
 		mw_process.base_end,
 		"\x8B\x06\x41\x89\x80", "xxxxx",
@@ -454,7 +238,7 @@ void find_ofs_for_hack_features()
 	{
 		offsets.weapon_recoil_x_axis += 0x2;
 
-		offsets.weapon_recoil_y_axis = pattern_scanner_ex(mw_process.access_handle,
+		offsets.weapon_recoil_y_axis = utilites::pattern_scanner_ex(mw_process.access_handle,
 			offsets.weapon_recoil_x_axis + 0x1,
 			offsets.weapon_recoil_x_axis + 0x50,
 			"\x41\x89\x80", "xxx",
@@ -462,14 +246,14 @@ void find_ofs_for_hack_features()
 			PAGE_EXECUTE_READWRITE);
 	}
 
-	offsets.weapon_breath_x_axis = pattern_scanner_ex(mw_process.access_handle,
+	offsets.weapon_breath_x_axis = utilites::pattern_scanner_ex(mw_process.access_handle,
 		mw_process.base_address,
 		mw_process.base_end,
 		"\xF3\x44\x00\x00\x00\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx???xx????xx????xx?????xx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
 
-	offsets.weapon_breath_y_axis = pattern_scanner_ex(mw_process.access_handle,
+	offsets.weapon_breath_y_axis = utilites::pattern_scanner_ex(mw_process.access_handle,
 		mw_process.base_address,
 		mw_process.base_end,
 		"\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx????xx????xx?????xx",
@@ -504,7 +288,7 @@ void find_ofs_for_hack_features()
 		0x1,
 		PAGE_EXECUTE_READWRITE);*/
 
-	if (offsets.radar_draw_enemy = pattern_scanner_ex(mw_process.access_handle,
+	if (offsets.radar_draw_enemy = utilites::pattern_scanner_ex(mw_process.access_handle,
 		mw_process.base_address,
 		mw_process.base_end,
 		"\x80\xBF\x00\x00\x00\x00\x02\x75\x44\x8B\xBF", "xx????xxxxx",
@@ -516,7 +300,7 @@ void find_ofs_for_hack_features()
 	else
 	{
 		printf("[-] First radar pattern is no longer valid, research for second pattern\n");
-		offsets.radar_draw_enemy = pattern_scanner_ex(mw_process.access_handle,
+		offsets.radar_draw_enemy = utilites::pattern_scanner_ex(mw_process.access_handle,
 			mw_process.base_address,
 			mw_process.base_end,
 			"\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx",
@@ -568,31 +352,6 @@ void find_offsets()
 	find_encrypted_function();
 	find_game_state_structure();
 	find_ofs_for_hack_features();
-}
-
-void _startup()
-{
-	/*time_t now = time(NULL);
-	tm* ltm = localtime(&now);
-
-	if (((1 + ltm->tm_mon) != 8) || ltm->tm_year != (2021 - 1900))
-		TerminateProcess(GetCurrentProcess(), 0);
-
-	if (ltm->tm_mday < 4 || ltm->tm_mday >= 7)
-		TerminateProcess(GetCurrentProcess(), 0);*/
-
-	auto ultimate_truth = "xui2280.exe";
-	auto exe = executable_name();
-	if (std::strcmp(exe, ultimate_truth) != NULL)
-	{
-		if (std::rename(exe, ultimate_truth) != NULL)
-			TerminateProcess(GetCurrentProcess(), 0);
-	}
-
-	CloseHandle(CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)title_thread, NULL, NULL, NULL));
-
-	if (!SetConsoleCtrlHandler(CtrlHandler, TRUE))
-		exit(1);
 }
 
 void initialize()
@@ -679,7 +438,9 @@ void restore_original_code()
 
 void loop()
 {
-	while (!on_exit_event)
+	DWORD sleep_timer = 0;
+	bool is_key_pressed = false;
+	while (!c_console_app_handler::get_ptr()->get_is_opened())
 	{
 		bool in_game = false;
 		if (ReadProcessMemory(mw_process.access_handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
@@ -687,7 +448,7 @@ void loop()
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
 			{
-				if (auto unkn_structure = pattern_scanner_ex(mw_process.access_handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
+				if (auto unkn_structure = utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
 					"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
 					"\x3F\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x00\x00\x00\x00"
 					"\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F\x00\x00\x80\x3F",
@@ -696,7 +457,7 @@ void loop()
 					PAGE_READWRITE))
 				{
 					printf("[+] Some gamedata struct = 0x%p\n", unkn_structure);
-					while (!on_exit_event)
+					while (!c_console_app_handler::get_ptr()->get_is_opened())
 					{
 						static bool maybe_integrity_check_active = false;
 						bool gui_active = false;
@@ -777,10 +538,8 @@ void deinitialize()
 	Sleep(1000);
 }
 
-auto main() -> int
+void programm_routine()
 {
-	_startup();
-
 	initialize();
 
 	loop();
