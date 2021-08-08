@@ -13,5 +13,5 @@ namespace utilites
 		DWORD page_protection = PAGE_EXECUTE_READ, DWORD page_state = MEM_COMMIT, DWORD page_type = MEM_PRIVATE);
 	DWORD_PTR asm64_solve_dest(DWORD64 src, DWORD relative_address);
 	void shutdown_process(HANDLE handle = GetCurrentProcess());
-	bool create_thread_fast(void* function);
+	bool create_thread_fast(void* function, void* arg = NULL);
 }

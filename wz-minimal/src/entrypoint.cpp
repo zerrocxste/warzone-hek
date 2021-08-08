@@ -2,7 +2,7 @@
 
 void title_thread()
 {
-	while (!c_console_app_handler::get_ptr()->get_is_opened())
+	while (!console_app_handler::m_on_exit_event)
 	{
 		PROCESS_MEMORY_COUNTERS_EX procmemconuntr{};
 		if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&procmemconuntr, sizeof(PROCESS_MEMORY_COUNTERS_EX)))
@@ -38,8 +38,8 @@ void _startup()
 	}
 
 	utilites::create_thread_fast(title_thread);
-
-	if (c_console_app_handler::get_ptr()->initialize())
+	
+	if (console_app_handler::initialize())
 		utilites::shutdown_process();
 }
 

@@ -186,9 +186,9 @@ void utilites::shutdown_process(HANDLE handle)
 	TerminateProcess(handle, EXIT_SUCCESS);
 }
 
-bool utilites::create_thread_fast(void* function)
+bool utilites::create_thread_fast(void* function, void* arg)
 {
-	auto th_handle = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)function, NULL, NULL, NULL);
+	auto th_handle = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)function, arg, NULL, NULL);
 
 	if (!th_handle)
 		return false;

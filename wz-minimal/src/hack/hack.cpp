@@ -440,7 +440,7 @@ void loop()
 {
 	DWORD sleep_timer = 0;
 	bool is_key_pressed = false;
-	while (!c_console_app_handler::get_ptr()->get_is_opened())
+	while (!console_app_handler::m_on_exit_event)
 	{
 		bool in_game = false;
 		if (ReadProcessMemory(mw_process.access_handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
@@ -457,7 +457,7 @@ void loop()
 					PAGE_READWRITE))
 				{
 					printf("[+] Some gamedata struct = 0x%p\n", unkn_structure);
-					while (!c_console_app_handler::get_ptr()->get_is_opened())
+					while (!console_app_handler::m_on_exit_event)
 					{
 						static bool maybe_integrity_check_active = false;
 						bool gui_active = false;
