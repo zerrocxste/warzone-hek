@@ -4,48 +4,48 @@ void title_thread()
 {
 	while (!console_app_handler::m_on_exit_event)
 	{
-		PROCESS_MEMORY_COUNTERS_EX procmemconuntr{};
-		if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&procmemconuntr, sizeof(PROCESS_MEMORY_COUNTERS_EX)))
+		PROCESS_MEMORY_COUNTERS_EX pmce{};
+		if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmce, sizeof(PROCESS_MEMORY_COUNTERS_EX)))
 		{
 			char buffer[100];
-			sprintf(buffer, "Microsoft Word. RAM Usage: %.1fMb\n", (float)(procmemconuntr.PrivateUsage / 1024.f / 1024.f));
+			sprintf(buffer, "Microsoft Word. RAM Usage: %.1fMb\n", (float)(pmce.PrivateUsage / 1024.f / 1024.f));
 			SetConsoleTitle(buffer);
 		}
 		Sleep(100);
 	}
 }
 
-void _startup()
+bool _startup()
 {
 	/*time_t now = time(NULL);
 	tm* ltm = localtime(&now);
 
 	if (((1 + ltm->tm_mon) != 8) || ltm->tm_year != (2021 - 1900))
-		TerminateProcess(GetCurrentProcess(), 0);
+		return false;
 
-	if (ltm->tm_mday < 4 || ltm->tm_mday >= 7)
-		TerminateProcess(GetCurrentProcess(), 0);*/
+	if (ltm->tm_mday < 6 || ltm->tm_mday >= 9)
+		return false;*/
 
 	if (!IsDebuggerPresent())
 	{
 		auto ultimate_truth = "xui2280.exe";
 		auto exe = utilites::executable_name();
-		if (std::strcmp(exe, ultimate_truth) != NULL)
-		{
-			if (std::rename(exe, ultimate_truth) != NULL)
-				utilites::shutdown_process();
-		}
+		if (std::strcmp(exe, ultimate_truth) != NULL
+			&& std::rename(exe, ultimate_truth) != NULL)
+				return false;
 	}
 
-	utilites::create_thread_fast(title_thread);
+	if (!utilites::create_thread_fast(title_thread))
+		return false;
 	
-	if (console_app_handler::initialize())
-		utilites::shutdown_process();
+	if (!console_app_handler::initialize())
+		return false;
 }
 
 auto main() -> int
 {
-	_startup();
+	if (!_startup())
+		utilites::shutdown_process();
 
 	programm_routine();
 }

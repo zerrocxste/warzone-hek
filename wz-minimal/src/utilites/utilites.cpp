@@ -6,7 +6,7 @@ const char* utilites::executable_name()
 	static char buff[MAX_PATH];
 	if (GetModuleFileName(GetModuleHandle(NULL), buff, buff_sz))
 	{
-		for (auto i = strlen(buff); i > 0; i--)
+		for (INT_PTR i = strlen(buff); i > 0; i--)
 		{
 			if (buff[i] && buff[i] == '\\')
 			{
@@ -153,7 +153,8 @@ DWORD_PTR utilites::pattern_scanner_ex(
 
 			char* seg_buffer = new char[size_seg];
 
-			if (ReadProcessMemory(handle, (void*)start, seg_buffer, size_seg, NULL))
+			if (seg_buffer && 
+				ReadProcessMemory(handle, (void*)start, seg_buffer, size_seg, NULL))
 			{
 				if (auto compare_result = compare_mem(pattern, mask, (DWORD_PTR)seg_buffer, size_seg, pattern_length, scan_speed))
 				{
