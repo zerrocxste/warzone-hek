@@ -177,9 +177,13 @@ DWORD_PTR utilites::pattern_scanner_ex(
 DWORD_PTR utilites::asm64_solve_dest(DWORD64 src, DWORD rva)
 {
 	auto dest = src + rva;
-	auto rel64 = (DWORD)src + (DWORD64)rva;
-	auto rel32 = (DWORD)dest;
-	return rva > 0x7FFFFFFF ? dest - (rel64 - rel32) : dest;
+	if (rva > 0x7FFFFFFF)
+	{
+		auto rel64 = (DWORD)src + (DWORD64)rva;
+		auto rel32 = (DWORD)dest;
+		return dest - (rel64 - rel32);
+	}
+	return dest;
 }
 
 void utilites::shutdown_process(HANDLE handle)

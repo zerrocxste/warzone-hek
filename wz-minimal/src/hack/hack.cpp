@@ -195,8 +195,6 @@ bool find_game_state_structure()
 		return false;
 	}
 
-	printf("__mov_rbx_pofxxxx__va = %p\n", __mov_rbx_pofxxxx__va);
-
 	DWORD rva_game_state_struct = 0;
 	ReadProcessMemory(mw_process.access_handle, (void*)(__mov_rbx_pofxxxx__va + 0x3), &rva_game_state_struct, sizeof(DWORD), NULL);
 
