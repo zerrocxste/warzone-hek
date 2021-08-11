@@ -100,28 +100,28 @@ bool save_original_bytes()
 	saved_original_bytes.o_radar_draw_enemy = new BYTE[2];
 
 	if (!saved_original_bytes.o_weapon_recoil_x_axis ||
-		!saved_original_bytes.o_weapon_recoil_y_axis || 
-		!saved_original_bytes.o_weapon_breath_x_axis || 
+		!saved_original_bytes.o_weapon_recoil_y_axis ||
+		!saved_original_bytes.o_weapon_breath_x_axis ||
 		!saved_original_bytes.o_weapon_breath_y_axis ||
 		!saved_original_bytes.o_radar_draw_enemy)
+	{
+		printf("[-] Failed allocate memory for save original bytes\n");
 		return false;
+	}
 
-	ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_recoil_x_axis, saved_original_bytes.o_weapon_recoil_x_axis, 7, NULL) ?
-		printf("[+] Recoil x axis instruction dumped\n") : printf("[-] Recoil x axis instruction dump failed\n");
-		
-	ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_recoil_y_axis, saved_original_bytes.o_weapon_recoil_y_axis, 7, NULL) ?
-		printf("[+] Recoil y axis instruction dumped\n") : printf("[-] Recoil y axis instruction dump failed\n");
+	auto _read_status1 = ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_recoil_x_axis, saved_original_bytes.o_weapon_recoil_x_axis, 7, NULL);
+	auto _read_status2 = ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_recoil_y_axis, saved_original_bytes.o_weapon_recoil_y_axis, 7, NULL);
+	auto _read_status3 = ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_breath_x_axis, saved_original_bytes.o_weapon_breath_x_axis, 5, NULL);
+	auto _read_status4 = ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_breath_y_axis, saved_original_bytes.o_weapon_breath_y_axis, 6, NULL);
+	auto _read_status5 = ReadProcessMemory(mw_process.access_handle, (void*)offsets.radar_draw_enemy, saved_original_bytes.o_radar_draw_enemy, 2, NULL);
 
-	ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_breath_x_axis, saved_original_bytes.o_weapon_breath_x_axis, 5, NULL) ?
-		printf("[+] Breath x axis instruction dumped\n") : printf("[-] Breath x axis instruction dump failed\n");
+	_read_status1 ? printf("[+] Recoil x axis instruction dumped\n") : printf("[-] Recoil x axis instruction dump failed\n");
+	_read_status2 ? printf("[+] Recoil y axis instruction dumped\n") : printf("[-] Recoil y axis instruction dump failed\n");
+	_read_status3 ? printf("[+] Breath x axis instruction dumped\n") : printf("[-] Breath x axis instruction dump failed\n");
+	_read_status4 ? printf("[+] Breath y axis instruction dumped\n") : printf("[-] Breath y axis instruction dump failed\n");
+	_read_status5 ? printf("[+] Radar enemy check instruction dumped\n") : printf("[-] Radar enemy check instruction dump failed\n");
 
-	ReadProcessMemory(mw_process.access_handle, (void*)offsets.weapon_breath_y_axis, saved_original_bytes.o_weapon_breath_y_axis, 6, NULL) ?
-		printf("[+] Breath y axis instruction dumped\n") : printf("[-] Breath y axis instruction dump failed\n");
-
-	ReadProcessMemory(mw_process.access_handle, (void*)offsets.radar_draw_enemy, saved_original_bytes.o_radar_draw_enemy, 2, NULL) ?
-		printf("[+] Radar enemy check instruction dumped\n") : printf("[-] Radar enemy check instruction dump failed\n");
-
-	return true;
+	return _read_status1 && _read_status2 && _read_status3 && _read_status4 && _read_status5;
 }
 
 bool make_patches()
@@ -137,7 +137,10 @@ bool make_patches()
 		!game_patch_patterns.m_weapon_breath_x_axis ||
 		!game_patch_patterns.m_weapon_breath_y_axis ||
 		!game_patch_patterns.m_radar_draw_enemy)
+	{
+		printf("[-] Failed allocate memory for make patches\n");
 		return false;
+	}
 
 	memset(game_patch_patterns.m_weapon_recoil_x_axis, 0x90, 7);
 	memset(game_patch_patterns.m_weapon_recoil_y_axis, 0x90, 7);
@@ -164,12 +167,12 @@ bool find_encrypted_function()
 
 	printf("[+] Found encrypted function caller = 0x%p\n", e8xxxx_encrypted_func);
 
-	DWORD relative_address_encrypted_function = 0;
-	ReadProcessMemory(mw_process.access_handle, (void*)(e8xxxx_encrypted_func + 0x1), &relative_address_encrypted_function, sizeof(DWORD), NULL);
+	DWORD rva_encrypted_function = 0;
+	ReadProcessMemory(mw_process.access_handle, (void*)(e8xxxx_encrypted_func + 0x1), &rva_encrypted_function, sizeof(DWORD), NULL);
 
-	printf("[+] Relative offset to encrypted function from E8 XXXX = 0x%x\n", relative_address_encrypted_function);
+	printf("[+] Relative offset to encrypted function from E8 XXXX = 0x%X\n", rva_encrypted_function);
 
-	offsets.prologue_encrypted_function = utilites::asm64_solve_dest(e8xxxx_encrypted_func + 0x5, relative_address_encrypted_function);
+	offsets.prologue_encrypted_function = utilites::asm64_solve_dest(e8xxxx_encrypted_func + 0x5, rva_encrypted_function);
 
 	printf("[+] Encrypted function found = 0x%p\n", offsets.prologue_encrypted_function);
 
@@ -178,35 +181,26 @@ bool find_encrypted_function()
 
 bool find_game_state_structure()
 {
-	auto func_7FF73E4C1A40 = utilites::pattern_scanner_ex(mw_process.access_handle, 
+	//"48 8B ? ? ? ? ? BA ? ? ? ? 48 8B ? E8 ? ? ? ? 48 8B ? 48 85 ? 75 ? 33 DB EB ? 0F B7 ? B9 ? ? ? ? 66 3B ? 73"
+	auto __mov_rbx_pofxxxx__va = utilites::pattern_scanner_ex(mw_process.access_handle, 
 		mw_process.base_address, mw_process.base_end,
-		"\x48\x89\x00\x00\x00\x57\x48\x83\xEC\x00\x48\x8B\x00\x4C\x8D\x00\x00\x00\x00\x00\x48\x8B\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x4C\x8D",
-		"xx???xxxx?xx?xx?????xx?x????xx?x????xx",
+		"\x48\x8B\x00\x00\x00\x00\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x00\x48\x85\x00\x75\x00\x33\xDB\xEB\x00\x0F\xB7\x00\xB9\x00\x00\x00\x00\x66\x3B\x00\x73",
+		"xx?????x????xx?x????xx?xx?x?xxx?xx?x????xx?x",
 		0x1, 
 		PAGE_EXECUTE_READWRITE);
 
-	if (!func_7FF73E4C1A40)
+	if (!__mov_rbx_pofxxxx__va)
 	{
-		printf("[-] Not found required instruction #1\n");
-		//"48 8B ? ? ? ? ? BA ? ? ? ? 48 8B ? E8 ? ? ? ? 48 8B ? 48 85 ? 75 ? 33 DB EB ? 0F B7 ? B9 ? ? ? ? 66 3B ? 73"
-		if (!(func_7FF73E4C1A40 = utilites::pattern_scanner_ex(mw_process.access_handle,
-			mw_process.base_address, mw_process.base_end,
-			"\x48\x8B\x00\x00\x00\x00\x00\xBA\x00\x00\x00\x00\x48\x8B\x00\xE8\x00\x00\x00\x00\x48\x8B\x00\x48\x85\x00\x75\x00\x33\xDB\xEB\x00\x0F\xB7\x00\xB9\x00\x00\x00\x00\x66\x3B\x00\x73",
-			"xx?????x????xx?x????xx?xx?x?xxx?xx?x????xx?x",
-			0x1, 
-			PAGE_EXECUTE_READWRITE)))
-		{
-			printf("[-] Not found required instruction #2\n");
-			return false;
-		}
+		printf("[-] Not found required instruction\n");
+		return false;
 	}
-	else
-		func_7FF73E4C1A40 += 0x48;
 
-	DWORD relative_address = 0;
-	ReadProcessMemory(mw_process.access_handle, (void*)(func_7FF73E4C1A40 + 0x3), &relative_address, sizeof(DWORD), NULL);
+	printf("__mov_rbx_pofxxxx__va = %p\n", __mov_rbx_pofxxxx__va);
 
-	ReadProcessMemory(mw_process.access_handle, (void*)utilites::asm64_solve_dest(func_7FF73E4C1A40 + 0x7, relative_address), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
+	DWORD rva_game_state_struct = 0;
+	ReadProcessMemory(mw_process.access_handle, (void*)(__mov_rbx_pofxxxx__va + 0x3), &rva_game_state_struct, sizeof(DWORD), NULL);
+
+	ReadProcessMemory(mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_game_state_struct), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
 
 	if (!offsets.game_state_struct)
 	{
@@ -273,16 +267,17 @@ bool find_va_for_hack_features()
 			PAGE_EXECUTE_READWRITE);
 	}
 
-	printf("[+] Recoil x axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
-		"[+] Recoil y axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
-		"[+] Breath x axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
-		"[+] Breath y axis writer instruction. Offset from base = 0x%I64X, address = 0x%p\n"
-		"[+] Radar draw enemy instruction. Offset from base = 0x%I64X, address = 0x%p\n",
-		offsets.weapon_recoil_x_axis - mw_process.base_address, offsets.weapon_recoil_x_axis,
-		offsets.weapon_recoil_y_axis - mw_process.base_address, offsets.weapon_recoil_y_axis,
-		offsets.weapon_breath_x_axis - mw_process.base_address, offsets.weapon_breath_x_axis,
-		offsets.weapon_breath_y_axis - mw_process.base_address, offsets.weapon_breath_y_axis,
-		offsets.radar_draw_enemy - mw_process.base_address, offsets.radar_draw_enemy
+	printf(
+		"[+] Recoil x axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
+		"[+] Recoil y axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
+		"[+] Breath x axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
+		"[+] Breath y axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
+		"[+] Radar draw enemy instruction: VA = 0x%p, RVA from base = 0x%I64X\n",
+		offsets.weapon_recoil_x_axis, offsets.weapon_recoil_x_axis - mw_process.base_address,
+		offsets.weapon_recoil_y_axis, offsets.weapon_recoil_y_axis - mw_process.base_address,
+		offsets.weapon_breath_x_axis, offsets.weapon_breath_x_axis - mw_process.base_address,
+		offsets.weapon_breath_y_axis, offsets.weapon_breath_y_axis - mw_process.base_address,
+		offsets.radar_draw_enemy, offsets.radar_draw_enemy - mw_process.base_address
 	);
 
 	return offsets.weapon_recoil_x_axis &&

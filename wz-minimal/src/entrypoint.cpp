@@ -40,6 +40,8 @@ bool _startup()
 	
 	if (!console_app_handler::initialize())
 		return false;
+
+	return true;
 }
 
 auto main() -> int

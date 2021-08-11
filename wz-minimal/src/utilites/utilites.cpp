@@ -174,12 +174,12 @@ DWORD_PTR utilites::pattern_scanner_ex(
 }
 
 //fedor narkoman............
-DWORD_PTR utilites::asm64_solve_dest(DWORD64 src, DWORD relative_address)
+DWORD_PTR utilites::asm64_solve_dest(DWORD64 src, DWORD rva)
 {
-	auto dest = src + relative_address;
-	auto rel64 = (DWORD)src + (DWORD64)relative_address;
+	auto dest = src + rva;
+	auto rel64 = (DWORD)src + (DWORD64)rva;
 	auto rel32 = (DWORD)dest;
-	return dest - (rel64 - rel32);
+	return rva > 0x7FFFFFFF ? dest - (rel64 - rel32) : dest;
 }
 
 void utilites::shutdown_process(HANDLE handle)
@@ -195,6 +195,29 @@ bool utilites::create_thread_fast(void* function, void* arg)
 		return false;
 
 	CloseHandle(th_handle);
+
+	return true;
+}
+
+bool utilites::print_bytes_ex(HANDLE handle, DWORD_PTR va, size_t length)
+{
+	BYTE* bytes = new BYTE[length];
+
+	if (!bytes)
+		return false;
+
+	printf("\n[+] %s, virtual address = %p\n", __FUNCTION__, va);
+	for (INT_PTR i = 0; i < length; i++)
+	{
+		if (!ReadProcessMemory(handle, (void*)(va + i), (void*)(bytes + i), sizeof(BYTE), NULL))
+		{
+			if (i) printf("\n");
+			printf("[-] %s, failed. ReadProcessMemory error code = %X\n", __FUNCTION__, GetLastError());
+			return false;
+		}
+		printf("%02X ", bytes[i]);
+	}
+	printf("\n\n");
 
 	return true;
 }
