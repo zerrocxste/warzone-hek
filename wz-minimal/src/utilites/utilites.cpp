@@ -181,7 +181,7 @@ DWORD_PTR utilites::asm64_solve_dest(DWORD64 src, DWORD rva)
 	{
 		auto rel64 = (DWORD)src + (DWORD64)rva;
 		auto rel32 = (DWORD)dest;
-		return dest - (rel64 - rel32);
+		dest -= rel64 - rel32;
 	}
 	return dest;
 }
@@ -210,6 +210,8 @@ bool utilites::print_bytes_ex(HANDLE handle, DWORD_PTR va, size_t length)
 	if (!bytes)
 		return false;
 
+	auto ret = true;
+
 	printf("\n[+] %s, virtual address = %p\n", __FUNCTION__, va);
 	for (INT_PTR i = 0; i < length; i++)
 	{
@@ -217,11 +219,14 @@ bool utilites::print_bytes_ex(HANDLE handle, DWORD_PTR va, size_t length)
 		{
 			if (i) printf("\n");
 			printf("[-] %s, failed. ReadProcessMemory error code = %X\n", __FUNCTION__, GetLastError());
-			return false;
+			ret = false;
+			break;
 		}
 		printf("%02X ", bytes[i]);
 	}
 	printf("\n\n");
 
-	return true;
+	delete[] bytes;
+
+	return ret;
 }
