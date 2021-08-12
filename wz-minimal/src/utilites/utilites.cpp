@@ -131,6 +131,8 @@ DWORD_PTR utilites::pattern_scanner_ex(
 	DWORD scan_speed,
 	DWORD page_protection, DWORD page_state, DWORD page_type)
 {
+	DWORD_PTR result = NULL;
+
 	auto pattern_length = strlen(mask);
 
 	MEMORY_BASIC_INFORMATION mbi{};
@@ -160,17 +162,19 @@ DWORD_PTR utilites::pattern_scanner_ex(
 				{
 					DWORD_PTR offset_from_start = compare_result - (DWORD_PTR)seg_buffer;
 					DWORD_PTR seg_buffer_to_internal_addres = start + offset_from_start;
-					delete[] seg_buffer;
-					return seg_buffer_to_internal_addres;
+					result = seg_buffer_to_internal_addres;
 				}
 			}
 
 			delete[] seg_buffer;
+
+			if (result)
+				break;
 		}
 		fix_seg ? start += size_seg : start = start_seg + size_seg;
 	}
 
-	return NULL;
+	return result;
 }
 
 //fedor narkoman............
