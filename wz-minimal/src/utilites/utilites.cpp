@@ -221,8 +221,7 @@ bool utilites::print_bytes_ex(HANDLE handle, DWORD_PTR va, size_t length)
 	{
 		if (!ReadProcessMemory(handle, (void*)(va + i), (void*)(bytes + i), sizeof(BYTE), NULL))
 		{
-			if (i) printf("\n");
-			printf("[-] %s, failed. ReadProcessMemory error code = %X\n", __FUNCTION__, GetLastError());
+			printf("\n[-] %s, failed. ReadProcessMemory error code = %X", __FUNCTION__, GetLastError());
 			ret = false;
 			break;
 		}
