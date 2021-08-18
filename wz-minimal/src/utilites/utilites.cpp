@@ -6,7 +6,7 @@ const char* utilites::executable_name()
 	static char buff[MAX_PATH];
 	if (GetModuleFileName(GetModuleHandle(NULL), buff, buff_sz))
 	{
-		for (INT_PTR i = strlen(buff); i > 0; i--)
+		for (INT_PTR i = strlen(buff); i >= 0; i--)
 		{
 			if (buff[i] && buff[i] == '\\')
 			{

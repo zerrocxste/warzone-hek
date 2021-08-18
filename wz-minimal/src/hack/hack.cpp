@@ -1,6 +1,6 @@
 ﻿#include "../includes.h"
 
-struct
+struct basic_process_information
 {
 	HANDLE access_handle;
 	DWORD pid;
@@ -458,7 +458,7 @@ void deinitialize()
 	CloseHandle(mw_process.access_handle);
 }
 
-void programm_routine()
+void hack::pornhub_invoke()
 {
 	if (!initialize())
 	{

@@ -15,8 +15,14 @@ void title_thread()
 	}
 }
 
-bool _startup()
+bool startup()
 {
+	if (!console_app_handler::initialize())
+		return false;
+
+	if (!utilites::create_thread_fast(title_thread))
+		return false;
+
 	/*time_t now = time(NULL);
 	tm* ltm = localtime(&now);
 
@@ -30,24 +36,18 @@ bool _startup()
 	{
 		auto ultimate_truth = "xui2280.exe";
 		auto exe = utilites::executable_name();
-		if (std::strcmp(exe, ultimate_truth) != NULL
-			&& std::rename(exe, ultimate_truth) != NULL)
+		if (std::strcmp(exe, ultimate_truth) != 0
+			&& std::rename(exe, ultimate_truth) != 0)
 				return false;
 	}
-
-	if (!utilites::create_thread_fast(title_thread))
-		return false;
-	
-	if (!console_app_handler::initialize())
-		return false;
 
 	return true;
 }
 
-auto main() -> int
+int main()
 {
-	if (!_startup())
+	if (!startup())
 		utilites::shutdown_process();
 
-	programm_routine();
+	hack::pornhub_invoke();
 }

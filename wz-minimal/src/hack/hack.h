@@ -1,1 +1,4 @@
-void programm_routine();
+namespace hack
+{
+	void pornhub_invoke();
+}
