@@ -38,7 +38,10 @@ bool startup()
 		auto exe = utilites::executable_name();
 		if (std::strcmp(exe, ultimate_truth) != 0
 			&& std::rename(exe, ultimate_truth) != 0)
-				return false;
+		{
+			printf("[+] u are welcome to alternativehack.gay\n");
+			return false;
+		}
 	}
 
 	return true;

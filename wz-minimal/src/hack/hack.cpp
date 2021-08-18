@@ -455,7 +455,24 @@ void deinitialize()
 		restore_original_code();
 	}
 
+	ZeroMemory(&offsets, sizeof(offsets));
+
+	delete[] saved_original_bytes.o_weapon_recoil_x_axis;
+	delete[] saved_original_bytes.o_weapon_recoil_y_axis;
+	delete[] saved_original_bytes.o_weapon_breath_x_axis;
+	delete[] saved_original_bytes.o_weapon_breath_y_axis;
+	delete[] saved_original_bytes.o_radar_draw_enemy;
+	ZeroMemory(&saved_original_bytes, sizeof(saved_original_bytes));
+
+	delete[] game_patch_patterns.m_weapon_recoil_x_axis;
+	delete[] game_patch_patterns.m_weapon_recoil_y_axis;
+	delete[] game_patch_patterns.m_weapon_breath_x_axis;
+	delete[] game_patch_patterns.m_weapon_breath_y_axis;
+	delete[] game_patch_patterns.m_radar_draw_enemy;
+	ZeroMemory(&game_patch_patterns, sizeof(game_patch_patterns));
+
 	CloseHandle(mw_process.access_handle);
+	ZeroMemory(&mw_process, sizeof(basic_process_information));
 }
 
 void hack::pornhub_invoke()
