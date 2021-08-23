@@ -2,8 +2,14 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#ifdef WIN32
+#error "compile as x64 is required"
+#endif
+
 #pragma warning (disable: 6011)
 #pragma warning (disable: 28159)
+
+//#define CONSOLE
 
 #include <iostream>
 #include <Windows.h>

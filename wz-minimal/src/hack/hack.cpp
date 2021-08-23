@@ -1,5 +1,11 @@
 ﻿#include "../includes.h"
 
+#define DISABLE_PRINTF
+
+#ifdef DISABLE_PRINTF
+
+#define printf(fmt, ...) (0)
+
 struct basic_process_information
 {
 	HANDLE access_handle;
@@ -14,7 +20,7 @@ struct basic_process_information
 struct
 {
 	DWORD_PTR prologue_encrypted_function;
-	DWORD_PTR game_state_struct;
+	DWORD_PTR instance_game_state_struct;
 	DWORD_PTR weapon_recoil_x_axis;
 	DWORD_PTR weapon_recoil_y_axis;
 	DWORD_PTR weapon_breath_x_axis;
@@ -195,18 +201,18 @@ bool find_game_state_structure()
 		return false;
 	}
 
-	DWORD rva_game_state_struct = 0;
-	ReadProcessMemory(mw_process.access_handle, (void*)(__mov_rbx_pofxxxx__va + 0x3), &rva_game_state_struct, sizeof(DWORD), NULL);
+	DWORD rva_instance_game_state_struct = 0;
+	ReadProcessMemory(mw_process.access_handle, (void*)(__mov_rbx_pofxxxx__va + 0x3), &rva_instance_game_state_struct, sizeof(DWORD), NULL);
 
-	ReadProcessMemory(mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_game_state_struct), &offsets.game_state_struct, sizeof(DWORD_PTR), NULL);
+	ReadProcessMemory(mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_instance_game_state_struct), &offsets.instance_game_state_struct, sizeof(DWORD_PTR), NULL);
 
-	if (!offsets.game_state_struct)
+	if (!offsets.instance_game_state_struct)
 	{
 		printf("[-] Not found game state struct\n");
 		return false;
 	}
 
-	printf("[+] Game state struct = 0x%p\n", offsets.game_state_struct);
+	printf("[+] Game state struct = 0x%p\n", offsets.instance_game_state_struct);
 
 	return true;
 }
@@ -367,12 +373,12 @@ void loop()
 	while (!console_app_handler::m_on_exit_event)
 	{
 		bool in_game = false;
-		if (ReadProcessMemory(mw_process.access_handle, (void*)(offsets.game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
+		if (ReadProcessMemory(mw_process.access_handle, (void*)(offsets.instance_game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
 			&& in_game)
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
 			{
-				if (auto unkn_structure = utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
+				if (auto some_structure_instance = utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
 					"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
 					"\x3F\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x00\x00\x00\x00"
 					"\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F\x00\x00\x80\x3F",
@@ -380,12 +386,12 @@ void loop()
 					0x1,
 					PAGE_READWRITE))
 				{
-					printf("[+] Some gamedata struct = 0x%p\n", unkn_structure);
+					printf("[+] Some gamedata struct instance = 0x%p\n", some_structure_instance);
 					while (!console_app_handler::m_on_exit_event)
 					{
 						static bool maybe_integrity_check_active = false;
 						bool gui_active = false;
-						if (ReadProcessMemory(mw_process.access_handle, (void*)(unkn_structure + 0xC8), &gui_active, sizeof(bool), NULL)
+						if (ReadProcessMemory(mw_process.access_handle, (void*)(some_structure_instance + 0xC8), &gui_active, sizeof(bool), NULL)
 							&& gui_active)
 						{
 							if (GetAsyncKeyState(VK_XBUTTON2))
@@ -421,7 +427,7 @@ void loop()
 						}
 
 						BYTE structure_status = 0;
-						if (!ReadProcessMemory(mw_process.access_handle, (void*)unkn_structure, &structure_status, sizeof(BYTE), NULL)
+						if (!ReadProcessMemory(mw_process.access_handle, (void*)some_structure_instance, &structure_status, sizeof(BYTE), NULL)
 							|| structure_status != 0xAB)
 						{
 							if (maybe_integrity_check_active && is_enabled)
@@ -445,16 +451,16 @@ void loop()
 
 		Sleep(50);
 	}
-}
 
-void deinitialize()
-{
 	if (is_enabled)
 	{
 		printf("[+] Restore original code...\n");
 		restore_original_code();
 	}
+}
 
+void deinitialize()
+{
 	ZeroMemory(&offsets, sizeof(offsets));
 
 	delete[] saved_original_bytes.o_weapon_recoil_x_axis;
@@ -480,8 +486,10 @@ void hack::pornhub_invoke()
 	if (!initialize())
 	{
 		system("pause");
-		utilites::shutdown_process();
+		return;
 	}
+
+	printf("[!] Use MOUSE4 for activate / deactivate hacks\n");
 
 	loop();
 
@@ -491,3 +499,5 @@ void hack::pornhub_invoke()
 
 	Sleep(1000);
 }
+
+#endif
