@@ -27,19 +27,10 @@ bool startup()
 	if (!console_app_handler::initialize())
 		return false;
 
-#ifdef CONSOLE
+#ifdef DEBUG
 	if (!utilites::create_thread_fast(title_thread))
 		return false;
 #endif
-
-	/*time_t now = time(NULL);
-	tm* ltm = localtime(&now);
-
-	if (((1 + ltm->tm_mon) != 8) || ltm->tm_year != (2021 - 1900))
-		return false;
-
-	if (ltm->tm_mday < 6 || ltm->tm_mday >= 9)
-		return false;*/
 
 	return true;
 }

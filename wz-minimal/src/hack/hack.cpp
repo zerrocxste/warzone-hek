@@ -484,6 +484,8 @@ void deinitialize()
 
 	CloseHandle(mw_process.access_handle);
 	ZeroMemory(&mw_process, sizeof(basic_process_information));
+
+	printf("[+] Exit...\n");
 }
 
 void hack::pornhub_invoke()
@@ -496,13 +498,11 @@ void hack::pornhub_invoke()
 		return;
 	}
 
-	printf("[!] Use MOUSE4 for activate / deactivate hacks\n");
+	printf("\n[!] Use MOUSE4 for activate / deactivate hacks\n");
 
 	loop();
 
 	deinitialize();
-
-	printf("[+] Exit...\n");
 
 	Sleep(1000);
 }
