@@ -1,10 +1,10 @@
 ﻿#include "../includes.h"
 
-#define DISABLE_PRINTF
-
-#ifdef DISABLE_PRINTF
+#ifndef DEBUG
 
 #define printf(fmt, ...) (0)
+
+#endif
 
 struct basic_process_information
 {
@@ -322,6 +322,17 @@ bool initialize()
 	return true;
 }
 
+DWORD_PTR find_some_structure_instance()
+{
+	return utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
+		"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
+		"\x3F\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x00\x00\x00\x00"
+		"\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F\x00\x00\x80\x3F",
+		"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		0x1,
+		PAGE_READWRITE);
+}
+
 void enable_hacks()
 {
 	printf("\n[+] Enable hacks...\n");
@@ -378,13 +389,7 @@ void loop()
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
 			{
-				if (auto some_structure_instance = utilites::pattern_scanner_ex(mw_process.access_handle, mw_process.min_application_address_space, mw_process.max_application_address_space,
-					"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
-					"\x3F\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x18\x43\x55\x55\x6D\x43\x00\x00\x00\x00\x00\x00"
-					"\x80\x3F\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x3F\x00\x00\x80\x3F",
-					"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-					0x1,
-					PAGE_READWRITE))
+				if (auto some_structure_instance = find_some_structure_instance())
 				{
 					printf("[+] Some gamedata struct instance = 0x%p\n", some_structure_instance);
 					while (!console_app_handler::m_on_exit_event)
@@ -485,7 +490,9 @@ void hack::pornhub_invoke()
 {
 	if (!initialize())
 	{
+#ifdef DEBUG
 		system("pause");
+#endif
 		return;
 	}
 
@@ -499,5 +506,3 @@ void hack::pornhub_invoke()
 
 	Sleep(1000);
 }
-
-#endif

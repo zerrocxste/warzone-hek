@@ -9,7 +9,7 @@
 #pragma warning (disable: 6011)
 #pragma warning (disable: 28159)
 
-//#define CONSOLE
+#define DEBUG
 
 #include <iostream>
 #include <Windows.h>

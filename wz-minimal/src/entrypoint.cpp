@@ -1,5 +1,6 @@
 #include "includes.h"
 
+#ifdef DEBUG
 void title_thread()
 {
 	auto h_current_process = GetCurrentProcess();
@@ -15,10 +16,11 @@ void title_thread()
 		Sleep(100);
 	}
 }
+#endif
 
 bool startup()
 {
-#ifndef CONSOLE
+#ifndef DEBUG
 	ShowWindow(GetConsoleWindow(), SW_HIDE);
 #endif
 
