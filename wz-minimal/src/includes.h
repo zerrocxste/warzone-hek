@@ -9,7 +9,9 @@
 #pragma warning (disable: 6011)
 #pragma warning (disable: 28159)
 
-#define DEBUG
+#define SHOW_CONSOLE
+//#define DEBUG
+//#define ON_TOP
 
 #include <iostream>
 #include <Windows.h>
@@ -19,3 +21,7 @@
 #include "console_app_handler/console_app_handler.h"
 #include "utilites/utilites.h"
 #include "hack/hack.h"
+
+#ifndef DEBUG
+#define printf(fmt, ...) (0)
+#endif
