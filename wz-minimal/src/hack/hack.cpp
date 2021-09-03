@@ -1,27 +1,5 @@
 ﻿#include "../includes.h"
 
-struct basic_process_information
-{
-	HANDLE access_handle;
-	DWORD pid;
-	DWORD_PTR base_address;
-	DWORD_PTR base_size;
-	DWORD_PTR base_end;
-	DWORD_PTR min_application_address_space;
-	DWORD_PTR max_application_address_space;
-} g_mw_process;
-
-struct
-{
-	DWORD_PTR prologue_encrypted_function;
-	DWORD_PTR instance_game_state_struct;
-	DWORD_PTR weapon_recoil_x_axis;
-	DWORD_PTR weapon_recoil_y_axis;
-	DWORD_PTR weapon_breath_x_axis;
-	DWORD_PTR weapon_breath_y_axis;
-	DWORD_PTR radar_draw_enemy;
-} g_offsets;
-
 class c_patch_pattern
 {
 private:
@@ -35,6 +13,11 @@ public:
 	}
 
 	~c_patch_pattern() {
+		clear();
+	}
+
+	void clear()
+	{
 		delete[] this->m_ptr_original_pattern;
 		delete[] this->m_ptr_modified_pattern;
 	}
@@ -77,16 +60,59 @@ public:
 	}
 };
 
-struct
+struct basic_process_information
+{
+	HANDLE access_handle;
+	DWORD pid;
+	DWORD_PTR base_address;
+	DWORD_PTR base_size;
+	DWORD_PTR base_end;
+	DWORD_PTR min_application_address_space;
+	DWORD_PTR max_application_address_space;
+
+	~basic_process_information()
+	{
+		memset(this, 0, sizeof(*this));
+	}
+};
+
+struct offsets
+{
+	DWORD_PTR prologue_encrypted_function;
+	DWORD_PTR instance_game_state_struct;
+	DWORD_PTR weapon_recoil_x_axis;
+	DWORD_PTR weapon_recoil_y_axis;
+	DWORD_PTR weapon_breath_x_axis;
+	DWORD_PTR weapon_breath_y_axis;
+	DWORD_PTR radar_draw_enemy;
+
+	~offsets()
+	{
+		memset(this, 0, sizeof(*this));
+	}
+};
+
+struct memory_patches
 {
 	c_patch_pattern* recoil_axis_x = new c_patch_pattern(7);
 	c_patch_pattern* recoil_axis_y = new c_patch_pattern(7);
 	c_patch_pattern* breath_axis_x = new c_patch_pattern(5);
 	c_patch_pattern* breath_axis_y = new c_patch_pattern(6);
 	c_patch_pattern* radar = new c_patch_pattern(2);
-} g_memory_patches;
 
-bool is_enabled = false;
+	~memory_patches()
+	{
+		this->recoil_axis_x->clear();
+		this->recoil_axis_y->clear();
+		this->breath_axis_x->clear();
+		this->breath_axis_y->clear();
+		this->radar->clear();
+	}
+};
+
+basic_process_information g_mw_process;
+offsets g_offsets;
+memory_patches g_memory_patches;
 
 bool predefinition_game_process()
 {
@@ -480,8 +506,9 @@ void restore_original_code()
 
 void loop()
 {
-	DWORD sleep_timer = 0;
+	bool is_enabled = false;
 	bool is_key_pressed = false;
+	DWORD sleep_timer = 0;
 	while (!console_app_handler::m_on_exit_event)
 	{
 		bool in_game = false;
@@ -493,16 +520,26 @@ void loop()
 				if (auto some_structure_instance = find_some_structure_instance())
 				{
 					printf("[+] Some gamedata struct instance = 0x%p\n", some_structure_instance);
+					bool is_changed = false;
 					while (!console_app_handler::m_on_exit_event)
 					{
 						static bool maybe_integrity_check_active = false;
 
-						bool gui_active = false;
-						bool game_intergity_work_test = true;
+						bool hud_active = false;
+						bool first_person_is_not_have_weapon = true;
 
-						if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_offsets.instance_game_state_struct + 0x379), &game_intergity_work_test, sizeof(bool), NULL)
-							&& ReadProcessMemory(g_mw_process.access_handle, (void*)(some_structure_instance + 0xC8), &gui_active, sizeof(bool), NULL)
-							&& (!game_intergity_work_test && gui_active))
+						auto all_is_ok = ReadProcessMemory(g_mw_process.access_handle, (void*)(g_offsets.instance_game_state_struct + 0x379), &first_person_is_not_have_weapon, sizeof(bool), NULL)
+							&& ReadProcessMemory(g_mw_process.access_handle, (void*)(some_structure_instance + 0xC8), &hud_active, sizeof(bool), NULL)
+							&& (!first_person_is_not_have_weapon && hud_active);
+
+						bool allow_hack = true;
+
+						if (!all_is_ok) //skip one tick of the check, otherwise, but the norecoil func may shake
+							!is_changed ? is_changed = true : allow_hack = false;
+						else
+							is_changed = false;
+
+						if (allow_hack)
 						{
 							if (GetAsyncKeyState(VK_XBUTTON2))
 							{
@@ -545,7 +582,7 @@ void loop()
 								restore_original_code();
 								maybe_integrity_check_active = false;
 							}
-							printf("[!] Structure is no longer valid, research...\n");
+							printf("[!] Structure is no longer valid, disabled hacks. Research will start when you are in the game\n");
 							break;
 						}
 
@@ -571,20 +608,7 @@ void loop()
 
 void deinitialize()
 {
-	g_memory_patches.recoil_axis_x->~c_patch_pattern();
-	g_memory_patches.recoil_axis_y->~c_patch_pattern();
-	g_memory_patches.breath_axis_x->~c_patch_pattern();
-	g_memory_patches.breath_axis_y->~c_patch_pattern();
-	g_memory_patches.radar->~c_patch_pattern();
-
-	ZeroMemory(&g_memory_patches, sizeof(g_memory_patches));
-
-	ZeroMemory(&g_offsets, sizeof(g_offsets));
-
 	CloseHandle(g_mw_process.access_handle);
-	ZeroMemory(&g_mw_process, sizeof(basic_process_information));
-
-	printf("[+] Exit...\n");
 }
 
 void hack::pornhub_invoke()
@@ -597,11 +621,13 @@ void hack::pornhub_invoke()
 		return;
 	}
 
-	printf("\n[!] Use MOUSE4 for activate / deactivate hacks\n");
+	printf("\n[!] Use MOUSE4 for activate / deactivate hacks\n\n");
 
 	loop();
 
 	deinitialize();
+
+	printf("[+] Exit...\n");
 
 	Sleep(1000);
 }
