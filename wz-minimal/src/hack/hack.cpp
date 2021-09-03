@@ -522,7 +522,7 @@ void loop()
 					printf("[+] Some gamedata struct instance = 0x%p\n", some_structure_instance);
 					bool is_changed = false;
 					bool maybe_integrity_check_active = false;
-					int skip_frame = 0;
+					int skipped_frame = 0;
 					while (!console_app_handler::m_on_exit_event)
 					{
 						bool hud_active = false;
@@ -553,12 +553,12 @@ void loop()
 								printf("[!] Reset hacks from cod integrity check (hacks enabled)\n");
 								maybe_integrity_check_active = true;
 							}
-							skip_frame = 0;
+							skipped_frame = 0;
 						}
 						else
 						{
-							skip_frame++;
-							if (maybe_integrity_check_active && is_enabled && skip_frame > 1)
+							skipped_frame++;
+							if (maybe_integrity_check_active && is_enabled && skipped_frame > 1)
 							{
 								restore_original_code();
 								printf("[!] Restore code from cod integrity check (hacks disabled)\n");

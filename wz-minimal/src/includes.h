@@ -10,8 +10,8 @@
 #pragma warning (disable: 28159)
 
 #define SHOW_CONSOLE
-#define DEBUG
-#define ON_TOP
+//#define DEBUG
+//#define ON_TOP
 
 #include <iostream>
 #include <Windows.h>
