@@ -521,25 +521,16 @@ void loop()
 				{
 					printf("[+] Some gamedata struct instance = 0x%p\n", some_structure_instance);
 					bool is_changed = false;
+					bool maybe_integrity_check_active = false;
+					int skip_frame = 0;
 					while (!console_app_handler::m_on_exit_event)
 					{
-						static bool maybe_integrity_check_active = false;
-
 						bool hud_active = false;
 						bool first_person_is_not_have_weapon = true;
 
-						auto all_is_ok = ReadProcessMemory(g_mw_process.access_handle, (void*)(g_offsets.instance_game_state_struct + 0x379), &first_person_is_not_have_weapon, sizeof(bool), NULL)
+						if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_offsets.instance_game_state_struct + 0x379), &first_person_is_not_have_weapon, sizeof(bool), NULL)
 							&& ReadProcessMemory(g_mw_process.access_handle, (void*)(some_structure_instance + 0xC8), &hud_active, sizeof(bool), NULL)
-							&& (!first_person_is_not_have_weapon && hud_active);
-
-						bool allow_hack = true;
-
-						if (!all_is_ok) //skip one tick of the check, otherwise, but the norecoil func may shake
-							!is_changed ? is_changed = true : allow_hack = false;
-						else
-							is_changed = false;
-
-						if (allow_hack)
+							&& (!first_person_is_not_have_weapon && hud_active))
 						{
 							if (GetAsyncKeyState(VK_XBUTTON2))
 							{
@@ -562,10 +553,12 @@ void loop()
 								printf("[!] Reset hacks from cod integrity check (hacks enabled)\n");
 								maybe_integrity_check_active = true;
 							}
+							skip_frame = 0;
 						}
 						else
 						{
-							if (maybe_integrity_check_active && is_enabled)
+							skip_frame++;
+							if (maybe_integrity_check_active && is_enabled && skip_frame > 1)
 							{
 								restore_original_code();
 								printf("[!] Restore code from cod integrity check (hacks disabled)\n");
