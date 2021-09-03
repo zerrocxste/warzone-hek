@@ -1,5 +1,7 @@
 ﻿#include "../includes.h"
 
+typedef unsigned long RVA;
+
 class c_patch_pattern
 {
 private:
@@ -250,8 +252,8 @@ bool find_encrypted_function()
 
 	printf("[+] Found encrypted function caller = 0x%p\n", e8xxxx_encrypted_func);
 
-	DWORD rva_encrypted_function = 0;
-	ReadProcessMemory(g_mw_process.access_handle, (void*)(e8xxxx_encrypted_func + 0x1), &rva_encrypted_function, sizeof(DWORD), NULL);
+	RVA rva_encrypted_function = 0;
+	ReadProcessMemory(g_mw_process.access_handle, (void*)(e8xxxx_encrypted_func + 0x1), &rva_encrypted_function, sizeof(RVA), NULL);
 
 	printf("[+] Relative offset to encrypted function from E8 XXXX = 0x%X\n", rva_encrypted_function);
 
@@ -278,8 +280,8 @@ bool find_game_state_structure()
 		return false;
 	}
 
-	DWORD rva_instance_game_state_struct = 0;
-	ReadProcessMemory(g_mw_process.access_handle, (void*)(__mov_rbx_pofxxxx__va + 0x3), &rva_instance_game_state_struct, sizeof(DWORD), NULL);
+	RVA rva_instance_game_state_struct = 0;
+	ReadProcessMemory(g_mw_process.access_handle, (void*)(__mov_rbx_pofxxxx__va + 0x3), &rva_instance_game_state_struct, sizeof(RVA), NULL);
 
 	ReadProcessMemory(g_mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_instance_game_state_struct), &g_offsets.instance_game_state_struct, sizeof(DWORD_PTR), NULL);
 
@@ -520,9 +522,10 @@ void loop()
 				if (auto some_structure_instance = find_some_structure_instance())
 				{
 					printf("[+] Some gamedata struct instance = 0x%p\n", some_structure_instance);
-					bool is_changed = false;
+
 					bool maybe_integrity_check_active = false;
 					int skipped_frame = 0;
+
 					while (!console_app_handler::m_on_exit_event)
 					{
 						bool hud_active = false;
