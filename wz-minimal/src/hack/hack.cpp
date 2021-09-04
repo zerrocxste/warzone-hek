@@ -109,6 +109,8 @@ struct memory_patches
 		this->breath_axis_x->clear();
 		this->breath_axis_y->clear();
 		this->radar->clear();
+
+		memset(this, 0, sizeof(*this));
 	}
 };
 
