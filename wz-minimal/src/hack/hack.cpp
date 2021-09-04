@@ -113,8 +113,8 @@ struct memory_patches
 };
 
 basic_process_information g_mw_process;
-offsets g_offsets;
-memory_patches g_memory_patches;
+offsets g_mw_offsets;
+memory_patches g_mw_memory_patches;
 
 bool predefinition_game_process()
 {
@@ -167,43 +167,43 @@ bool predefinition_game_process()
 
 bool save_original_bytes()
 {
-	if (!g_memory_patches.recoil_axis_x->get_original() ||
-		!g_memory_patches.recoil_axis_y->get_original() ||
-		!g_memory_patches.breath_axis_x->get_original() ||
-		!g_memory_patches.breath_axis_y->get_original() ||
-		!g_memory_patches.radar->get_original())
+	if (!g_mw_memory_patches.recoil_axis_x->get_original() ||
+		!g_mw_memory_patches.recoil_axis_y->get_original() ||
+		!g_mw_memory_patches.breath_axis_x->get_original() ||
+		!g_mw_memory_patches.breath_axis_y->get_original() ||
+		!g_mw_memory_patches.radar->get_original())
 	{
 		printf("[-] Failed allocate memory for save original bytes\n");
 		return false;
 	}
 
 	auto read_status1 = ReadProcessMemory(g_mw_process.access_handle, 
-		(void*)g_offsets.weapon_recoil_x_axis, 
-		g_memory_patches.recoil_axis_x->get_original(),
-		g_memory_patches.recoil_axis_x->get_size(), 
+		(void*)g_mw_offsets.weapon_recoil_x_axis,
+		g_mw_memory_patches.recoil_axis_x->get_original(),
+		g_mw_memory_patches.recoil_axis_x->get_size(),
 		NULL);
 
 	auto read_status2 = ReadProcessMemory(g_mw_process.access_handle,
-		(void*)g_offsets.weapon_recoil_y_axis, 
-		g_memory_patches.recoil_axis_y->get_original(), 
-		g_memory_patches.recoil_axis_y->get_size(), 
+		(void*)g_mw_offsets.weapon_recoil_y_axis,
+		g_mw_memory_patches.recoil_axis_y->get_original(), 
+		g_mw_memory_patches.recoil_axis_y->get_size(), 
 		NULL);
 	auto read_status3 = ReadProcessMemory(g_mw_process.access_handle, 
-		(void*)g_offsets.weapon_breath_x_axis,
-		g_memory_patches.breath_axis_x->get_original(),
-		g_memory_patches.breath_axis_x->get_size(), 
+		(void*)g_mw_offsets.weapon_breath_x_axis,
+		g_mw_memory_patches.breath_axis_x->get_original(),
+		g_mw_memory_patches.breath_axis_x->get_size(), 
 		NULL);
 
 	auto read_status4 = ReadProcessMemory(g_mw_process.access_handle,
-		(void*)g_offsets.weapon_breath_y_axis, 
-		g_memory_patches.breath_axis_y->get_original(), 
-		g_memory_patches.breath_axis_y->get_size(),
+		(void*)g_mw_offsets.weapon_breath_y_axis,
+		g_mw_memory_patches.breath_axis_y->get_original(), 
+		g_mw_memory_patches.breath_axis_y->get_size(),
 		NULL);
 
 	auto read_status5 = ReadProcessMemory(g_mw_process.access_handle, 
-		(void*)g_offsets.radar_draw_enemy,
-		g_memory_patches.radar->get_original(),
-		g_memory_patches.radar->get_size(), 
+		(void*)g_mw_offsets.radar_draw_enemy,
+		g_mw_memory_patches.radar->get_original(),
+		g_mw_memory_patches.radar->get_size(), 
 		NULL);
 
 	read_status1 ? printf("[+] Recoil x axis instruction dumped\n") : printf("[-] Recoil x axis instruction dump failed\n");
@@ -217,21 +217,21 @@ bool save_original_bytes()
 
 bool make_patches()
 {
-	if (!g_memory_patches.recoil_axis_x->get_modified() ||
-		!g_memory_patches.recoil_axis_y->get_modified() ||
-		!g_memory_patches.breath_axis_x->get_modified() ||
-		!g_memory_patches.breath_axis_y->get_modified() ||
-		!g_memory_patches.radar->get_modified())
+	if (!g_mw_memory_patches.recoil_axis_x->get_modified() ||
+		!g_mw_memory_patches.recoil_axis_y->get_modified() ||
+		!g_mw_memory_patches.breath_axis_x->get_modified() ||
+		!g_mw_memory_patches.breath_axis_y->get_modified() ||
+		!g_mw_memory_patches.radar->get_modified())
 	{
 		printf("[-] Failed allocate memory for make patches\n");
 		return false;
 	}
 
-	g_memory_patches.recoil_axis_x->setup_modified(NULL, 0x90);
-	g_memory_patches.recoil_axis_y->setup_modified(NULL, 0x90);
-	g_memory_patches.breath_axis_x->setup_modified(NULL, 0x90);
-	g_memory_patches.breath_axis_y->setup_modified(NULL, 0x90);
-	g_memory_patches.radar->setup_modified(NULL, 0x90);
+	g_mw_memory_patches.recoil_axis_x->setup_modified(NULL, 0x90);
+	g_mw_memory_patches.recoil_axis_y->setup_modified(NULL, 0x90);
+	g_mw_memory_patches.breath_axis_x->setup_modified(NULL, 0x90);
+	g_mw_memory_patches.breath_axis_y->setup_modified(NULL, 0x90);
+	g_mw_memory_patches.radar->setup_modified(NULL, 0x90);
 
 	return true;
 }
@@ -257,9 +257,9 @@ bool find_encrypted_function()
 
 	printf("[+] Relative offset to encrypted function from E8 XXXX = 0x%X\n", rva_encrypted_function);
 
-	g_offsets.prologue_encrypted_function = utilites::asm64_solve_dest(e8xxxx_encrypted_func + 0x5, rva_encrypted_function);
+	g_mw_offsets.prologue_encrypted_function = utilites::asm64_solve_dest(e8xxxx_encrypted_func + 0x5, rva_encrypted_function);
 
-	printf("[+] Encrypted function found = 0x%p\n", g_offsets.prologue_encrypted_function);
+	printf("[+] Encrypted function found = 0x%p\n", g_mw_offsets.prologue_encrypted_function);
 
 	return true;
 }
@@ -289,66 +289,66 @@ bool find_game_state_structure()
 		return false;
 	}
 
-	ReadProcessMemory(g_mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_instance_game_state_struct), &g_offsets.instance_game_state_struct, sizeof(DWORD_PTR), NULL);
+	ReadProcessMemory(g_mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_instance_game_state_struct), &g_mw_offsets.instance_game_state_struct, sizeof(DWORD_PTR), NULL);
 
-	if (!g_offsets.instance_game_state_struct)
+	if (!g_mw_offsets.instance_game_state_struct)
 	{
 		printf("[-] Not found game state struct\n");
 		return false;
 	}
 
-	printf("[+] Game state struct = 0x%p\n", g_offsets.instance_game_state_struct);
+	printf("[+] Game state struct = 0x%p\n", g_mw_offsets.instance_game_state_struct);
 
 	return true;
 }
 
 bool find_va_for_hack_features()
 {
-	if (g_offsets.prologue_encrypted_function && 
-		(g_offsets.weapon_recoil_x_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
-		g_offsets.prologue_encrypted_function, 
-		g_mw_process.base_end,
-		"\x8B\x06\x41\x89\x80", "xxxxx",
-		0x1,
-		PAGE_EXECUTE_READWRITE)))
+	if (g_mw_offsets.prologue_encrypted_function &&
+		(g_mw_offsets.weapon_recoil_x_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+			g_mw_offsets.prologue_encrypted_function, 
+			g_mw_process.base_end,
+			"\x8B\x06\x41\x89\x80", "xxxxx",
+			0x1,
+			PAGE_EXECUTE_READWRITE)))
 	{
-		g_offsets.weapon_recoil_x_axis += 0x2;
+		g_mw_offsets.weapon_recoil_x_axis += 0x2;
 
-		g_offsets.weapon_recoil_y_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
-			g_offsets.weapon_recoil_x_axis + 0x1,
-			g_offsets.weapon_recoil_x_axis + 0x50,
+		g_mw_offsets.weapon_recoil_y_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+			g_mw_offsets.weapon_recoil_x_axis + 0x1,
+			g_mw_offsets.weapon_recoil_x_axis + 0x50,
 			"\x41\x89\x80", "xxx",
 			0x1,
 			PAGE_EXECUTE_READWRITE);
 	}
 
-	g_offsets.weapon_breath_x_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+	g_mw_offsets.weapon_breath_x_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
 		g_mw_process.base_address,
 		g_mw_process.base_end,
 		"\xF3\x44\x00\x00\x00\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx???xx????xx????xx?????xx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
 
-	g_offsets.weapon_breath_y_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+	g_mw_offsets.weapon_breath_y_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
 		g_mw_process.base_address,
 		g_mw_process.base_end,
 		"\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx????xx????xx?????xx",
 		0x1,
 		PAGE_EXECUTE_READWRITE);
 
-	if (g_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+	if (g_mw_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
 		g_mw_process.base_address,
 		g_mw_process.base_end,
 		"\x80\xBF\x00\x00\x00\x00\x02\x75\x44\x8B\xBF", "xx????xxxxx",
 		0x1,
 		PAGE_EXECUTE_READWRITE))
 	{
-		g_offsets.radar_draw_enemy += 0x7;
+		g_mw_offsets.radar_draw_enemy += 0x7;
 	}
 	else
 	{
 		printf("[-] First radar pattern is no longer valid, research for second pattern\n");
-		g_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+		g_mw_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
 			g_mw_process.base_address,
 			g_mw_process.base_end,
 			"\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx",
@@ -362,18 +362,18 @@ bool find_va_for_hack_features()
 		"[+] Breath x axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
 		"[+] Breath y axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
 		"[+] Radar draw enemy instruction: VA = 0x%p, RVA from base = 0x%I64X\n",
-		g_offsets.weapon_recoil_x_axis, g_offsets.weapon_recoil_x_axis - g_mw_process.base_address,
-		g_offsets.weapon_recoil_y_axis, g_offsets.weapon_recoil_y_axis - g_mw_process.base_address,
-		g_offsets.weapon_breath_x_axis, g_offsets.weapon_breath_x_axis - g_mw_process.base_address,
-		g_offsets.weapon_breath_y_axis, g_offsets.weapon_breath_y_axis - g_mw_process.base_address,
-		g_offsets.radar_draw_enemy, g_offsets.radar_draw_enemy - g_mw_process.base_address
+		g_mw_offsets.weapon_recoil_x_axis, g_mw_offsets.weapon_recoil_x_axis - g_mw_process.base_address,
+		g_mw_offsets.weapon_recoil_y_axis, g_mw_offsets.weapon_recoil_y_axis - g_mw_process.base_address,
+		g_mw_offsets.weapon_breath_x_axis, g_mw_offsets.weapon_breath_x_axis - g_mw_process.base_address,
+		g_mw_offsets.weapon_breath_y_axis, g_mw_offsets.weapon_breath_y_axis - g_mw_process.base_address,
+		g_mw_offsets.radar_draw_enemy, g_mw_offsets.radar_draw_enemy - g_mw_process.base_address
 	);
 
-	return g_offsets.weapon_recoil_x_axis &&
-		g_offsets.weapon_recoil_y_axis &&
-		g_offsets.weapon_breath_x_axis &&
-		g_offsets.weapon_breath_y_axis &&
-		g_offsets.radar_draw_enemy;
+	return g_mw_offsets.weapon_recoil_x_axis &&
+		g_mw_offsets.weapon_recoil_y_axis &&
+		g_mw_offsets.weapon_breath_x_axis &&
+		g_mw_offsets.weapon_breath_y_axis &&
+		g_mw_offsets.radar_draw_enemy;
 }													
 
 bool find_offsets()
@@ -423,28 +423,28 @@ void enable_hacks()
 	printf("\n[+] Enable hacks...\n");
 
 	auto patch_status1 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_recoil_x_axis), 
-		g_memory_patches.recoil_axis_x->get_modified(), g_memory_patches.recoil_axis_x->get_size(), 
+		(void*)(g_mw_offsets.weapon_recoil_x_axis),
+		g_mw_memory_patches.recoil_axis_x->get_modified(), g_mw_memory_patches.recoil_axis_x->get_size(),
 		NULL);
 
 	auto patch_status2 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_recoil_y_axis), 
-		g_memory_patches.recoil_axis_y->get_modified(), g_memory_patches.recoil_axis_y->get_size(), 
+		(void*)(g_mw_offsets.weapon_recoil_y_axis),
+		g_mw_memory_patches.recoil_axis_y->get_modified(), g_mw_memory_patches.recoil_axis_y->get_size(),
 		NULL);
 
 	auto patch_status3 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_breath_x_axis), 
-		g_memory_patches.breath_axis_x->get_modified(), g_memory_patches.breath_axis_x->get_size(), 
+		(void*)(g_mw_offsets.weapon_breath_x_axis),
+		g_mw_memory_patches.breath_axis_x->get_modified(), g_mw_memory_patches.breath_axis_x->get_size(),
 		NULL);
 
 	auto patch_status4 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_breath_y_axis), 
-		g_memory_patches.breath_axis_y->get_modified(), g_memory_patches.breath_axis_y->get_size(), 
+		(void*)(g_mw_offsets.weapon_breath_y_axis),
+		g_mw_memory_patches.breath_axis_y->get_modified(), g_mw_memory_patches.breath_axis_y->get_size(),
 		NULL);
 
 	auto patch_status5 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.radar_draw_enemy), 
-		g_memory_patches.radar->get_modified(), g_memory_patches.radar->get_size(),
+		(void*)(g_mw_offsets.radar_draw_enemy),
+		g_mw_memory_patches.radar->get_modified(), g_mw_memory_patches.radar->get_size(),
 		NULL);
 
 	if (!patch_status1
@@ -470,28 +470,28 @@ void restore_original_code()
 	printf("\n[+] Disable hacks...\n");
 
 	auto patch_status1 = WriteProcessMemory(g_mw_process.access_handle, 
-		(void*)(g_offsets.weapon_recoil_x_axis), 
-		g_memory_patches.recoil_axis_x->get_original(), g_memory_patches.recoil_axis_x->get_size(), 
+		(void*)(g_mw_offsets.weapon_recoil_x_axis),
+		g_mw_memory_patches.recoil_axis_x->get_original(), g_mw_memory_patches.recoil_axis_x->get_size(),
 		NULL);
 
 	auto patch_status2 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_recoil_y_axis), 
-		g_memory_patches.recoil_axis_y->get_original(), g_memory_patches.recoil_axis_y->get_size(), 
+		(void*)(g_mw_offsets.weapon_recoil_y_axis),
+		g_mw_memory_patches.recoil_axis_y->get_original(), g_mw_memory_patches.recoil_axis_y->get_size(),
 		NULL);
 
 	auto patch_status3 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_breath_x_axis), 
-		g_memory_patches.breath_axis_x->get_original(), g_memory_patches.breath_axis_x->get_size(), 
+		(void*)(g_mw_offsets.weapon_breath_x_axis),
+		g_mw_memory_patches.breath_axis_x->get_original(), g_mw_memory_patches.breath_axis_x->get_size(),
 		NULL);
 
 	auto patch_status4 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.weapon_breath_y_axis), 
-		g_memory_patches.breath_axis_y->get_original(), g_memory_patches.breath_axis_y->get_size(), 
+		(void*)(g_mw_offsets.weapon_breath_y_axis),
+		g_mw_memory_patches.breath_axis_y->get_original(), g_mw_memory_patches.breath_axis_y->get_size(),
 		NULL);
 
 	auto patch_status5 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_offsets.radar_draw_enemy), 
-		g_memory_patches.radar->get_original(), g_memory_patches.radar->get_size(), 
+		(void*)(g_mw_offsets.radar_draw_enemy),
+		g_mw_memory_patches.radar->get_original(), g_mw_memory_patches.radar->get_size(),
 		NULL);
 
 	if (!patch_status1
@@ -520,7 +520,7 @@ void loop()
 	while (!console_app_handler::m_on_exit_event)
 	{
 		bool in_game = false;
-		if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_offsets.instance_game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
+		if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_mw_offsets.instance_game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
 			&& in_game)
 		{
 			if (GetTickCount() - sleep_timer >= 25000)
@@ -537,7 +537,7 @@ void loop()
 						bool hud_active = false;
 						bool first_person_is_not_have_weapon = true;
 
-						if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_offsets.instance_game_state_struct + 0x379), &first_person_is_not_have_weapon, sizeof(bool), NULL)
+						if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_mw_offsets.instance_game_state_struct + 0x379), &first_person_is_not_have_weapon, sizeof(bool), NULL)
 							&& ReadProcessMemory(g_mw_process.access_handle, (void*)(some_structure_instance + 0xC8), &hud_active, sizeof(bool), NULL)
 							&& (!first_person_is_not_have_weapon && hud_active))
 						{
