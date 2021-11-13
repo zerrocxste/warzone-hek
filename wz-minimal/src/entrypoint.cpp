@@ -20,8 +20,8 @@ void title_thread()
 
 bool startup()
 {
-	if (!SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS))
-		return false;
+	/*if (!SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS))
+		return false;*/
 
 #ifdef ON_TOP
 	SetWindowPos(GetConsoleWindow(), HWND_TOPMOST, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);

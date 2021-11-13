@@ -66,11 +66,11 @@ struct basic_process_information
 {
 	HANDLE access_handle;
 	DWORD pid;
-	DWORD_PTR base_address;
-	DWORD_PTR base_size;
-	DWORD_PTR base_end;
-	DWORD_PTR min_application_address_space;
-	DWORD_PTR max_application_address_space;
+	DWORD64 base_address;
+	DWORD64 base_size;
+	DWORD64 base_end;
+	DWORD64 min_application_address_space;
+	DWORD64 max_application_address_space;
 
 	~basic_process_information()
 	{
@@ -80,13 +80,11 @@ struct basic_process_information
 
 struct offsets
 {
-	DWORD_PTR prologue_encrypted_function;
-	DWORD_PTR instance_game_state_struct;
-	DWORD_PTR weapon_recoil_x_axis;
-	DWORD_PTR weapon_recoil_y_axis;
-	DWORD_PTR weapon_breath_x_axis;
-	DWORD_PTR weapon_breath_y_axis;
-	DWORD_PTR radar_draw_enemy;
+	DWORD64 prologue_encrypted_function;
+	DWORD64 instance_game_state_struct;
+	DWORD64 weapon_recoil_x_axis;
+	DWORD64 weapon_recoil_y_axis;
+	DWORD64 radar_draw_enemy;
 
 	~offsets()
 	{
@@ -98,16 +96,12 @@ struct memory_patches
 {
 	c_patch_pattern* recoil_axis_x = new c_patch_pattern(7);
 	c_patch_pattern* recoil_axis_y = new c_patch_pattern(7);
-	c_patch_pattern* breath_axis_x = new c_patch_pattern(5);
-	c_patch_pattern* breath_axis_y = new c_patch_pattern(6);
 	c_patch_pattern* radar = new c_patch_pattern(2);
 
 	~memory_patches()
 	{
 		this->recoil_axis_x->clear();
 		this->recoil_axis_y->clear();
-		this->breath_axis_x->clear();
-		this->breath_axis_y->clear();
 		this->radar->clear();
 
 		memset(this, 0, sizeof(*this));
@@ -140,8 +134,8 @@ bool predefinition_game_process()
 		return false;
 	}
 
-	g_mw_process.base_address = (DWORD_PTR)base->modBaseAddr;
-	g_mw_process.base_size = (DWORD_PTR)base->modBaseSize;
+	g_mw_process.base_address = (DWORD64)base->modBaseAddr;
+	g_mw_process.base_size = (DWORD64)base->modBaseSize;
 	g_mw_process.base_end = g_mw_process.base_address + g_mw_process.base_size;
 
 	printf("[+] Found MW19 process. pid = %d, base = 0x%p, base size = %I64X, base end = 0x%p\n",
@@ -161,8 +155,8 @@ bool predefinition_game_process()
 	SYSTEM_INFO info{};
 	GetSystemInfo(&info);
 
-	g_mw_process.min_application_address_space = (DWORD_PTR)info.lpMinimumApplicationAddress;
-	g_mw_process.max_application_address_space = (DWORD_PTR)info.lpMaximumApplicationAddress;
+	g_mw_process.min_application_address_space = (DWORD64)info.lpMinimumApplicationAddress;
+	g_mw_process.max_application_address_space = (DWORD64)info.lpMaximumApplicationAddress;
 
 	return true;
 }
@@ -171,8 +165,6 @@ bool save_original_bytes()
 {
 	if (!g_mw_memory_patches.recoil_axis_x->get_original() ||
 		!g_mw_memory_patches.recoil_axis_y->get_original() ||
-		!g_mw_memory_patches.breath_axis_x->get_original() ||
-		!g_mw_memory_patches.breath_axis_y->get_original() ||
 		!g_mw_memory_patches.radar->get_original())
 	{
 		printf("[-] Failed allocate memory for save original bytes\n");
@@ -190,19 +182,8 @@ bool save_original_bytes()
 		g_mw_memory_patches.recoil_axis_y->get_original(), 
 		g_mw_memory_patches.recoil_axis_y->get_size(), 
 		NULL);
+
 	auto read_status3 = ReadProcessMemory(g_mw_process.access_handle, 
-		(void*)g_mw_offsets.weapon_breath_x_axis,
-		g_mw_memory_patches.breath_axis_x->get_original(),
-		g_mw_memory_patches.breath_axis_x->get_size(), 
-		NULL);
-
-	auto read_status4 = ReadProcessMemory(g_mw_process.access_handle,
-		(void*)g_mw_offsets.weapon_breath_y_axis,
-		g_mw_memory_patches.breath_axis_y->get_original(), 
-		g_mw_memory_patches.breath_axis_y->get_size(),
-		NULL);
-
-	auto read_status5 = ReadProcessMemory(g_mw_process.access_handle, 
 		(void*)g_mw_offsets.radar_draw_enemy,
 		g_mw_memory_patches.radar->get_original(),
 		g_mw_memory_patches.radar->get_size(), 
@@ -210,19 +191,15 @@ bool save_original_bytes()
 
 	read_status1 ? printf("[+] Recoil x axis instruction dumped\n") : printf("[-] Recoil x axis instruction dump failed\n");
 	read_status2 ? printf("[+] Recoil y axis instruction dumped\n") : printf("[-] Recoil y axis instruction dump failed\n");
-	read_status3 ? printf("[+] Breath x axis instruction dumped\n") : printf("[-] Breath x axis instruction dump failed\n");
-	read_status4 ? printf("[+] Breath y axis instruction dumped\n") : printf("[-] Breath y axis instruction dump failed\n");
-	read_status5 ? printf("[+] Radar enemy check instruction dumped\n") : printf("[-] Radar enemy check instruction dump failed\n");
+	read_status3 ? printf("[+] Radar enemy check instruction dumped\n") : printf("[-] Radar enemy check instruction dump failed\n");
 
-	return read_status1 && read_status2 && read_status3 && read_status4 && read_status5;
+	return read_status1 && read_status2 && read_status3;
 }
 
 bool make_patches()
 {
 	if (!g_mw_memory_patches.recoil_axis_x->get_modified() ||
 		!g_mw_memory_patches.recoil_axis_y->get_modified() ||
-		!g_mw_memory_patches.breath_axis_x->get_modified() ||
-		!g_mw_memory_patches.breath_axis_y->get_modified() ||
 		!g_mw_memory_patches.radar->get_modified())
 	{
 		printf("[-] Failed allocate memory for make patches\n");
@@ -231,8 +208,6 @@ bool make_patches()
 
 	g_mw_memory_patches.recoil_axis_x->setup_modified(NULL, 0x90);
 	g_mw_memory_patches.recoil_axis_y->setup_modified(NULL, 0x90);
-	g_mw_memory_patches.breath_axis_x->setup_modified(NULL, 0x90);
-	g_mw_memory_patches.breath_axis_y->setup_modified(NULL, 0x90);
 	g_mw_memory_patches.radar->setup_modified(NULL, 0x90);
 
 	return true;
@@ -291,7 +266,7 @@ bool find_game_state_structure()
 		return false;
 	}
 
-	ReadProcessMemory(g_mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_instance_game_state_struct), &g_mw_offsets.instance_game_state_struct, sizeof(DWORD_PTR), NULL);
+	ReadProcessMemory(g_mw_process.access_handle, (void*)utilites::asm64_solve_dest(__mov_rbx_pofxxxx__va + 0x7, rva_instance_game_state_struct), &g_mw_offsets.instance_game_state_struct, sizeof(DWORD64), NULL);
 
 	if (!g_mw_offsets.instance_game_state_struct)
 	{
@@ -324,57 +299,22 @@ bool find_va_for_hack_features()
 			PAGE_EXECUTE_READWRITE);
 	}
 
-	g_mw_offsets.weapon_breath_x_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
-		g_mw_process.base_address,
-		g_mw_process.base_end,
-		"\xF3\x44\x00\x00\x00\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx???xx????xx????xx?????xx",
-		0x1,
-		PAGE_EXECUTE_READWRITE);
-
-	g_mw_offsets.weapon_breath_y_axis = utilites::pattern_scanner_ex(g_mw_process.access_handle,
-		g_mw_process.base_address,
-		g_mw_process.base_end,
-		"\xF3\x44\x00\x00\x00\x00\xF3\x44\x00\x00\x00\x00\x48\x8B\x00\x00\x00\x00\x00\x48\x33", "xx????xx????xx?????xx",
-		0x1,
-		PAGE_EXECUTE_READWRITE);
-
 	if (g_mw_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
 		g_mw_process.base_address,
 		g_mw_process.base_end,
-		"\x80\xBF\x00\x00\x00\x00\x02\x75\x44\x8B\xBF", "xx????xxxxx",
+		"\x80\x00\x00\x00\x00\x00\x02\x75\x00\x8B\x00\x00\x00\x00\x00\x8B\x00\x04", "x?????xx?x?????x?x",
 		0x1,
 		PAGE_EXECUTE_READWRITE))
 	{
 		g_mw_offsets.radar_draw_enemy += 0x7;
 	}
-	else
-	{
-		printf("[-] First radar pattern is no longer valid, research for second pattern\n");
-		g_mw_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
-			g_mw_process.base_address,
-			g_mw_process.base_end,
-			"\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx",
-			0x1,
-			PAGE_EXECUTE_READWRITE);
-	}
 
-	printf(
-		"[+] Recoil x axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
-		"[+] Recoil y axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
-		"[+] Breath x axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
-		"[+] Breath y axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n"
-		"[+] Radar draw enemy instruction: VA = 0x%p, RVA from base = 0x%I64X\n",
-		g_mw_offsets.weapon_recoil_x_axis, g_mw_offsets.weapon_recoil_x_axis - g_mw_process.base_address,
-		g_mw_offsets.weapon_recoil_y_axis, g_mw_offsets.weapon_recoil_y_axis - g_mw_process.base_address,
-		g_mw_offsets.weapon_breath_x_axis, g_mw_offsets.weapon_breath_x_axis - g_mw_process.base_address,
-		g_mw_offsets.weapon_breath_y_axis, g_mw_offsets.weapon_breath_y_axis - g_mw_process.base_address,
-		g_mw_offsets.radar_draw_enemy, g_mw_offsets.radar_draw_enemy - g_mw_process.base_address
-	);
+	printf("[+] Recoil x axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n", g_mw_offsets.weapon_recoil_x_axis, g_mw_offsets.weapon_recoil_x_axis - g_mw_process.base_address);
+	printf("[+] Recoil y axis writer instruction: VA = 0x%p, RVA from base = 0x%I64X\n", g_mw_offsets.weapon_recoil_y_axis, g_mw_offsets.weapon_recoil_y_axis - g_mw_process.base_address);
+	printf("[+] Radar draw enemy instruction: VA = 0x%p, RVA from base = 0x%I64X\n", g_mw_offsets.radar_draw_enemy, g_mw_offsets.radar_draw_enemy - g_mw_process.base_address);
 
 	return g_mw_offsets.weapon_recoil_x_axis &&
 		g_mw_offsets.weapon_recoil_y_axis &&
-		g_mw_offsets.weapon_breath_x_axis &&
-		g_mw_offsets.weapon_breath_y_axis &&
 		g_mw_offsets.radar_draw_enemy;
 }													
 
@@ -409,7 +349,7 @@ bool initialize()
 	return true;
 }
 
-DWORD_PTR find_some_structure_instance()
+DWORD64 find_some_structure_instance()
 {
 	return utilites::pattern_scanner_ex(g_mw_process.access_handle, g_mw_process.min_application_address_space, g_mw_process.max_application_address_space,
 		"\xAB\xAA\x26\xC3\xAB\xAA\x26\x43\xAA\xAA\xEC\x43\xAB\xAA\x49\x44\x00\x00\x00\x3F\x00\x00\x00"
@@ -435,36 +375,17 @@ void enable_hacks()
 		NULL);
 
 	auto patch_status3 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_mw_offsets.weapon_breath_x_axis),
-		g_mw_memory_patches.breath_axis_x->get_modified(), g_mw_memory_patches.breath_axis_x->get_size(),
-		NULL);
-
-	auto patch_status4 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_mw_offsets.weapon_breath_y_axis),
-		g_mw_memory_patches.breath_axis_y->get_modified(), g_mw_memory_patches.breath_axis_y->get_size(),
-		NULL);
-
-	auto patch_status5 = WriteProcessMemory(g_mw_process.access_handle,
 		(void*)(g_mw_offsets.radar_draw_enemy),
 		g_mw_memory_patches.radar->get_modified(), g_mw_memory_patches.radar->get_size(),
 		NULL);
 
-	if (!patch_status1
-		|| !patch_status2)
-		printf("[-] Recoil patch something wrong\n");
-	else
-		printf("[+] No recoil enabled\n");
-
-	if (!patch_status3
-		|| !patch_status4)
-		printf("[-] Breath patch something wrong\n");
-	else
-		printf("[+] No breath enabled\n");
-
-	if (!patch_status5)
-		printf("[-] Radar draw enemy patch something wrong\n");
-	else
-		printf("[+] Radar draw enemy enabled\n");
+	if (!patch_status1 || !patch_status2 || !patch_status3)
+	{
+		printf("[-] Enable hacks something wrong!\n");
+		printf("Recoil Pitch patch status: %d\n", patch_status1);
+		printf("Recoil Yaw patch status: %d\n", patch_status2);
+		printf("Radar patch status: %d\n", patch_status3);
+	}
 }
 
 void restore_original_code()
@@ -482,36 +403,17 @@ void restore_original_code()
 		NULL);
 
 	auto patch_status3 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_mw_offsets.weapon_breath_x_axis),
-		g_mw_memory_patches.breath_axis_x->get_original(), g_mw_memory_patches.breath_axis_x->get_size(),
-		NULL);
-
-	auto patch_status4 = WriteProcessMemory(g_mw_process.access_handle,
-		(void*)(g_mw_offsets.weapon_breath_y_axis),
-		g_mw_memory_patches.breath_axis_y->get_original(), g_mw_memory_patches.breath_axis_y->get_size(),
-		NULL);
-
-	auto patch_status5 = WriteProcessMemory(g_mw_process.access_handle,
 		(void*)(g_mw_offsets.radar_draw_enemy),
 		g_mw_memory_patches.radar->get_original(), g_mw_memory_patches.radar->get_size(),
 		NULL);
 
-	if (!patch_status1
-		|| !patch_status2)
-		printf("[-] Restore recoil code something wrong\n");
-	else
-		printf("[+] Recoil restored\n");
-
-	if (!patch_status3
-		|| !patch_status4)
-		printf("[-] Restore breath code something wrong\n");
-	else
-		printf("[+] No breath restored\n");
-
-	if (!patch_status5)
-		printf("[-] Radar restore code something wrong\n");
-	else
-		printf("[+] Radar code restored\n");
+	if (!patch_status1 || !patch_status2 || !patch_status3)
+	{
+		printf("[-] Restore original code something wrong!\n");
+		printf("Recoil Pitch patch status: %d\n", patch_status1);
+		printf("Recoil Yaw patch status: %d\n", patch_status2);
+		printf("Radar patch status: %d\n", patch_status3);
+	}
 }
 
 void loop()
@@ -519,10 +421,11 @@ void loop()
 	bool is_enabled = false;
 	bool is_key_pressed = false;
 	DWORD sleep_timer = 0;
+
 	while (!console_app_handler::m_on_exit_event)
 	{
 		bool in_game = false;
-		if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_mw_offsets.instance_game_state_struct + 0x238 /*0x988*/), &in_game, sizeof(bool), NULL)
+		if (ReadProcessMemory(g_mw_process.access_handle, (void*)(g_mw_offsets.instance_game_state_struct + 0x238), &in_game, sizeof(bool), NULL)
 			&& in_game)
 		{
 			if (GetTickCount() - sleep_timer >= 25000)

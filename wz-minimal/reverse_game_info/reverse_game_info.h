@@ -259,6 +259,22 @@ Address of signature = ModernWarfare.exe + 0x047469E0
 "\x74\x00\x45\x84\x00\x74\x00\x41\x0F\x00\x00\xEB\x00\x49\x8B", "x?xx?x?xx??x?xx"
 "74 ? 45 84 ? 74 ? 41 0F ? ? EB ? 49 8B"
 
+upd:
+Address of signature = ModernWarfare.exe + 0x04E63D47
+"\x80\xBE\xBF\xB0\x05\x00", "xxxxxx"
+"80 BE BF B0 05 00"
+
+	else
+	{
+		printf("[-] First radar pattern is no longer valid, research for second pattern\n");
+		g_mw_offsets.radar_draw_enemy = utilites::pattern_scanner_ex(g_mw_process.access_handle,
+			g_mw_process.base_address,
+			g_mw_process.base_end,
+			"\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx",
+			0x1,
+			PAGE_EXECUTE_READWRITE);
+	}
+
 accsess radar draw enemy:
 Address of signature = ModernWarfare.exe + 0x04472F53
 my sig, bcz sig scanner popil govna: 
@@ -266,6 +282,11 @@ v1 "80 BF ? ? ? ? 02 75 44 8B BF"
 "\x80\xBF\x00\x00\x00\x00\x02\x75\x44\x8B\xBF", "xx????xxxxx"
 v2 "80 BF ? ? ? ? 02 75 44 8B BF ? ? ? ? "
 ModernWarfare.exe+4472F53 - 80 BF 5B050000 02     - cmp byte ptr [rdi+0000055B],02
+
+//06.11.21
+80 ? ? ? ? ? 02 75 ? 8B ? ? ? ? ? 8B ? 04
+"\x80\x00\x00\x00\x00\x00\x02\x75\x00\x8B\x00\x00\x00\x00\x00\x8B\x00\x04", "x?????xx?x?????x?x"
+
 or
 Address of signature = ModernWarfare.exe + 0x04718AB3
 "\x75\x00\x8B\xBF\x00\x00\x00\x00\x8B\x53", "x?xx????xx"
@@ -286,3 +307,5 @@ Address of signature = ModernWarfare.exe + 0x04484D9F
 "\x0F\xB6\x00\x00\x00\x00\x00\x3C\x00\x75\x00\x8B\x8E", "xx?????x?x?xx"
 "0F B6 ? ? ? ? ? 3C ? 75 ? 8B 8E"
 */
+
+
